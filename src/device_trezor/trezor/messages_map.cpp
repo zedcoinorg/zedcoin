@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2024, The Monero Project
+// Copyright (c) 2017-2022, The Zedcoin Project
 //
 // All rights reserved.
 //
@@ -45,14 +45,14 @@ namespace trezor
 {
 
   const char * TYPE_PREFIX = "MessageType_";
-  const std::string PACKAGES[] = {
+  const char * PACKAGES[] = {
       "hw.trezor.messages.",
       "hw.trezor.messages.common.",
       "hw.trezor.messages.management.",
 #ifdef WITH_TREZOR_DEBUGGING
       "hw.trezor.messages.debug.",
 #endif
-      "hw.trezor.messages.monero."
+      "hw.trezor.messages.zedcoin."
   };
 
   google::protobuf::Message * MessageMapper::get_message(int wire_number) {
@@ -73,7 +73,7 @@ namespace trezor
     // Each package instantiation so lookup works
     hw::trezor::messages::common::Success::default_instance();
     hw::trezor::messages::management::Cancel::default_instance();
-    hw::trezor::messages::monero::MoneroGetAddress::default_instance();
+    hw::trezor::messages::zedcoin::ZedcoinGetAddress::default_instance();
 
 #ifdef WITH_TREZOR_DEBUGGING
     hw::trezor::messages::debug::DebugLinkDecision::default_instance();
@@ -101,13 +101,13 @@ namespace trezor
 //    // CODEGEN way, fast
 //    switch(wire_number){
 //      case 501:
-//        return new messages::monero::MoneroTransactionSignRequest();
+//        return new messages::zedcoin::ZedcoinTransactionSignRequest();
 //      default:
 //        throw std::runtime_error("not implemented");
 //    }
 //
 //    // CODEGEN message -> number: specification
-//    //    messages::MessageType get_message_wire_number(const messages::monero::MoneroTransactionSignRequest * msg) { return 501; }
+//    //    messages::MessageType get_message_wire_number(const messages::zedcoin::ZedcoinTransactionSignRequest * msg) { return 501; }
 //    //    messages::MessageType get_message_wire_number(const messages::management::ping * msg)
 //
   }

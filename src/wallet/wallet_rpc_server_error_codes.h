@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 // 
 // All rights reserved.
 // 
@@ -83,4 +83,3 @@
 #define WALLET_RPC_ERROR_CODE_NONZERO_UNLOCK_TIME    -50
 #define WALLET_RPC_ERROR_CODE_IS_BACKGROUND_WALLET   -51
 #define WALLET_RPC_ERROR_CODE_IS_BACKGROUND_SYNCING  -52
-#define WALLET_RPC_ERROR_CODE_INVALID_FEE_PRIORITY   -53

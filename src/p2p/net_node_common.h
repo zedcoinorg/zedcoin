@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 // 
 // All rights reserved.
 // 
@@ -33,7 +33,6 @@
 #include <boost/uuid/uuid.hpp>
 #include <utility>
 #include <vector>
-#include "net/levin_base.h"
 #include "cryptonote_basic/blobdatatype.h"
 #include "cryptonote_protocol/enums.h"
 #include "cryptonote_protocol/fwd.h"

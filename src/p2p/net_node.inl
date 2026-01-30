@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Monero Project
 //
 // All rights reserved.
 //
@@ -51,13 +51,14 @@
 #include "common/dns_utils.h"
 #include "common/pruning.h"
 #include "net/error.h"
+#include "net/net_helper.h"
+#include "math_helper.h"
 #include "misc_log_ex.h"
 #include "p2p_protocol_defs.h"
 #include "crypto/crypto.h"
 #include "storages/levin_abstract_invoke2.h"
 #include "cryptonote_core/cryptonote_core.h"
 #include "net/parse.h"
-#include "p2p/net_node.h"
 
 #include <miniupnp/miniupnpc/miniupnpc.h>
 #include <miniupnp/miniupnpc/upnpcommands.h>
@@ -65,6 +66,8 @@
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
 #define MONERO_DEFAULT_LOG_CATEGORY "net.p2p"
+
+#define NET_MAKE_IP(b1,b2,b3,b4)  ((LPARAM)(((DWORD)(b1)<<24)+((DWORD)(b2)<<16)+((DWORD)(b3)<<8)+((DWORD)(b4))))
 
 #define MIN_WANTED_SEED_NODES 12
 
@@ -730,31 +733,21 @@ namespace nodetool
     std::set<std::string> full_addrs;
     if (m_nettype == cryptonote::TESTNET)
     {
-      full_addrs.insert("176.9.0.187:28080");
-      full_addrs.insert("192.99.8.110:28080");
-      full_addrs.insert("37.187.74.171:28080");
-      full_addrs.insert("88.99.195.15:28080");
-      full_addrs.insert("5.104.84.64:28080");
+      full_addrs.insert("188.137.253.182:58313");
+      full_addrs.insert("185.253.7.132:58313");
     }
     else if (m_nettype == cryptonote::STAGENET)
     {
-      full_addrs.insert("176.9.0.187:38080");
-      full_addrs.insert("192.99.8.110:38080");
-      full_addrs.insert("37.187.74.171:38080");
-      full_addrs.insert("88.99.195.15:38080");
-      full_addrs.insert("5.104.84.64:38080");
+      full_addrs.insert("188.137.253.182:62313");
+      full_addrs.insert("185.253.7.132:62313");
     }
     else if (m_nettype == cryptonote::FAKECHAIN)
     {
     }
     else
     {
-      full_addrs.insert("176.9.0.187:18080");
-      full_addrs.insert("88.198.163.90:18080");
-      full_addrs.insert("192.99.8.110:18080");
-      full_addrs.insert("37.187.74.171:18080");
-      full_addrs.insert("88.99.195.15:18080");
-      full_addrs.insert("5.104.84.64:18080");
+      full_addrs.insert("188.137.253.182:48313");
+      full_addrs.insert("185.253.7.132:48313");
     }
     return full_addrs;
   }
@@ -2140,13 +2133,6 @@ namespace nodetool
       return true;
 
     static const std::vector<std::string> dns_urls = {
-      "blocklist.moneropulse.se"
-    , "blocklist.moneropulse.org"
-    , "blocklist.moneropulse.net"
-    , "blocklist.moneropulse.co"
-    , "blocklist.moneropulse.fr"
-    , "blocklist.moneropulse.de"
-    , "blocklist.moneropulse.ch"
     };
 
     std::vector<std::string> records;

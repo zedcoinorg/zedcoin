@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2024, The Monero Project
+# Copyright (c) 2014-2019, The Monero Project
 # 
 # All rights reserved.
 # 
@@ -43,7 +43,11 @@ set(UPNPC_BUILD_SHARED OFF CACHE BOOL "Disable building shared library" FORCE)
 add_subdirectory(miniupnp/miniupnpc)
 set_property(TARGET libminiupnpc-static PROPERTY FOLDER "external")
 set_property(TARGET libminiupnpc-static PROPERTY POSITION_INDEPENDENT_CODE ON)
-set_property(TARGET libminiupnpc-static APPEND_STRING PROPERTY COMPILE_FLAGS " -Wno-undef -Wno-unused-result -Wno-unused-value")
+if(MSVC)
+  set_property(TARGET libminiupnpc-static APPEND_STRING PROPERTY COMPILE_FLAGS " -wd4244 -wd4267")
+elseif(NOT MSVC)
+  set_property(TARGET libminiupnpc-static APPEND_STRING PROPERTY COMPILE_FLAGS " -Wno-undef -Wno-unused-result -Wno-unused-value")
+endif()
 if(CMAKE_SYSTEM_NAME MATCHES "NetBSD")
 	set_property(TARGET libminiupnpc-static APPEND_STRING PROPERTY COMPILE_FLAGS " -D_NETBSD_SOURCE")
 endif()

@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 //
 // All rights reserved.
 //
@@ -30,7 +30,10 @@
 #include <boost/filesystem.hpp>
 #include "common/command_line.h"
 #include "serialization/crypto.h"
+#include "cryptonote_core/tx_pool.h"
 #include "cryptonote_core/cryptonote_core.h"
+#include "cryptonote_core/blockchain.h"
+#include "blockchain_db/blockchain_db.h"
 #include "version.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
@@ -134,12 +137,12 @@ int main(int argc, char* argv[])
 
   if (command_line::get_arg(vm, command_line::arg_help))
   {
-    std::cout << "Monero '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")" << ENDL << ENDL;
+    std::cout << "Zedcoin '" << MONERO_RELEASE_NAME << "' (v" << MONERO_VERSION_FULL << ")" << ENDL << ENDL;
     std::cout << desc_options << std::endl;
     return 1;
   }
 
-  mlog_configure(mlog_get_default_log_path("monero-blockchain-prune-known-spent-data.log"), true);
+  mlog_configure(mlog_get_default_log_path("zedcoin-blockchain-prune-known-spent-data.log"), true);
   if (!command_line::is_arg_defaulted(vm, arg_log_level))
     mlog_set_log(command_line::get_arg(vm, arg_log_level).c_str());
   else
@@ -157,8 +160,9 @@ int main(int argc, char* argv[])
   const std::string input = command_line::get_arg(vm, arg_input);
 
   LOG_PRINT_L0("Initializing source blockchain (BlockchainDB)");
-  std::unique_ptr<BlockchainAndPool> core_storage = std::make_unique<BlockchainAndPool>();
-
+  std::unique_ptr<Blockchain> core_storage;
+  tx_memory_pool m_mempool(*core_storage);
+  core_storage.reset(new Blockchain(m_mempool));
   BlockchainDB *db = new_db();
   if (db == NULL)
   {
@@ -178,7 +182,7 @@ int main(int argc, char* argv[])
     LOG_PRINT_L0("Error opening database: " << e.what());
     return 1;
   }
-  r = core_storage->blockchain.init(db, net_type);
+  r = core_storage->init(db, net_type);
 
   CHECK_AND_ASSERT_MES(r, 1, "Failed to initialize source blockchain storage");
   LOG_PRINT_L0("Source blockchain storage initialized OK");
@@ -276,7 +280,7 @@ int main(int argc, char* argv[])
   MINFO("Prunable outputs: " << num_prunable_outputs);
 
   LOG_PRINT_L0("Blockchain known spent data pruned OK");
-  core_storage->blockchain.deinit();
+  core_storage->deinit();
   return 0;
 
   CATCH_ENTRY("Error", 1);

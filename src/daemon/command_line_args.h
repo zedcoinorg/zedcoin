@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 // 
 // All rights reserved.
 // 
@@ -32,11 +32,10 @@
 #include "common/command_line.h"
 #include "cryptonote_config.h"
 #include "daemonizer/daemonizer.h"
-#include "cryptonote_core/cryptonote_core.h"
 
 namespace daemon_args
 {
-  std::string const WINDOWS_SERVICE_NAME = "Monero Daemon";
+  std::string const WINDOWS_SERVICE_NAME = "Zedcoin Daemon";
 
   const command_line::arg_descriptor<std::string, false, true, 2> arg_config_file = {
     "config-file"
@@ -80,12 +79,16 @@ namespace daemon_args
   };
   const command_line::arg_descriptor<std::string> arg_log_level = {
     "log-level"
-  , "0-4 or categories"
+  , ""
   , ""
   };
   const command_line::arg_descriptor<std::vector<std::string>> arg_command = {
     "daemon_command"
   , "Hidden"
+  };
+  const command_line::arg_descriptor<bool> arg_os_version = {
+    "os-version"
+  , "OS for which this executable was compiled"
   };
   const command_line::arg_descriptor<unsigned> arg_max_concurrency = {
     "max-concurrency"

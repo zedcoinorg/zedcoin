@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 //
 // All rights reserved.
 //
@@ -172,12 +172,7 @@ struct txpool_tx_meta_t
   uint8_t is_forwarding: 1;
   uint8_t bf_padding: 3;
 
-  uint8_t padding[44]; // til 160 bytes
-
-  // If non-null, this verification ID is set for this tx only when some mixring passed ver_input_proofs_rings()
-  crypto::hash valid_input_verification_id;
-
-  // 192 bytes total
+  uint8_t padding[76]; // till 192 bytes
 
   void set_relay_method(relay_method method) noexcept;
   relay_method get_relay_method() const noexcept;
@@ -191,8 +186,7 @@ struct txpool_tx_meta_t
     return matches_category(get_relay_method(), category);
   }
 };
-static_assert(sizeof(txpool_tx_meta_t) == 192, "possible DB migration needed for changes to txpool_tx_meta_t");
-static_assert(offsetof(txpool_tx_meta_t, valid_input_verification_id) == 160, "verif ID wrong alignment");
+
 
 #define DBF_SAFE       1
 #define DBF_FAST       2
@@ -442,12 +436,11 @@ private:
    *
    * @param blk_hash the hash of the block containing the transaction
    * @param tx the transaction to be added
-   * @param blob for `tx`
    * @param tx_hash the hash of the transaction
    * @param tx_prunable_hash the hash of the prunable part of the transaction
    * @return the transaction ID
    */
-  virtual uint64_t add_transaction_data(const crypto::hash& blk_hash, const transaction& tx, epee::span<const std::uint8_t> blob, const crypto::hash& tx_hash, const crypto::hash& tx_prunable_hash) = 0;
+  virtual uint64_t add_transaction_data(const crypto::hash& blk_hash, const std::pair<transaction, blobdata_ref>& tx, const crypto::hash& tx_hash, const crypto::hash& tx_prunable_hash) = 0;
 
   /**
    * @brief remove data about a transaction
@@ -572,11 +565,10 @@ protected:
    *
    * @param blk_hash hash of the block which has the transaction
    * @param tx the transaction to add
-   * @param blob for `tx`
    * @param tx_hash_ptr the hash of the transaction, if already calculated
    * @param tx_prunable_hash_ptr the hash of the prunable part of the transaction, if already calculated
    */
-  void add_transaction(const crypto::hash& blk_hash, const transaction& tx, epee::span<const std::uint8_t> blob, const crypto::hash* tx_hash_ptr = NULL, const crypto::hash* tx_prunable_hash_ptr = NULL);
+  void add_transaction(const crypto::hash& blk_hash, const std::pair<transaction, blobdata_ref>& tx, const crypto::hash* tx_hash_ptr = NULL, const crypto::hash* tx_prunable_hash_ptr = NULL);
 
   mutable uint64_t time_tx_exists = 0;  //!< a performance metric
   uint64_t time_commit1 = 0;  //!< a performance metric
@@ -725,6 +717,41 @@ public:
    * @return the name of the folder with the BlockchainDB's files, if any.
    */
   virtual std::string get_db_name() const = 0;
+
+
+  // FIXME: these are just for functionality mocking, need to implement
+  // RAII-friendly and multi-read one-write friendly locking mechanism
+  //
+  // acquire db lock
+  /**
+   * @brief acquires the BlockchainDB lock
+   *
+   * This function is a stub until such a time as locking is implemented at
+   * this level.
+   *
+   * The subclass implementation should return true unless implementing a
+   * locking scheme of some sort, in which case it should return true upon
+   * acquisition of the lock and block until then.
+   *
+   * If any of this cannot be done, the subclass should throw the corresponding
+   * subclass of DB_EXCEPTION
+   *
+   * @return true, unless at a future time false makes sense (timeout, etc)
+   */
+  virtual bool lock() = 0;
+
+  // release db lock
+  /**
+   * @brief This function releases the BlockchainDB lock
+   *
+   * The subclass, should it have implemented lock(), will release any lock
+   * held by the calling thread.  In the case of recursive locking, it should
+   * release one instance of a lock.
+   *
+   * If any of this cannot be done, the subclass should throw the corresponding
+   * subclass of DB_EXCEPTION
+   */
+  virtual void unlock() = 0;
 
   /**
    * @brief tells the BlockchainDB to start a new "batch" of blocks
@@ -1026,7 +1053,7 @@ public:
    * @brief fetch a block's already generated coins
    *
    * The subclass should return the total coins generated as of the block
-   * with the given height, capped to a maximum value of MONEY_SUPPLY.
+   * with the given height.
    *
    * If the block does not exist, the subclass should throw BLOCK_DNE
    *
@@ -1279,21 +1306,6 @@ public:
   virtual bool get_pruned_tx_blobs_from(const crypto::hash& h, size_t count, std::vector<cryptonote::blobdata> &bd) const = 0;
 
   /**
-   * @brief Get all txids in the database (chain and pool) that match a certain nbits txid template
-   *
-   * To be more specific, for all `dbtxid` txids in the database, return `dbtxid` if
-   * `0 == cryptonote::compare_hash32_reversed_nbits(txid_template, dbtxid, nbits)`.
-   *
-   * @param txid_template the transaction id template
-   * @param nbits number of bits to compare against in the template
-   * @param max_num_txs The maximum number of txids to match, if we hit this limit, throw early
-   * @return std::vector<crypto::hash> the list of all matching txids
-   *
-   * @throw TX_EXISTS if the number of txids that match exceed `max_num_txs`
-   */
-  virtual std::vector<crypto::hash> get_txids_loose(const crypto::hash& txid_template, std::uint32_t nbits, uint64_t max_num_txs = 0) = 0;
-
-  /**
    * @brief fetches a variable number of blocks and transactions from the given height, in canonical blockchain order
    *
    * The subclass should return the blocks and transactions stored from the one with the given
@@ -1306,13 +1318,14 @@ public:
    * @param max_size the maximum size of block/transaction data to return (will be exceeded by one blocks's worth at most, if min_count is met)
    * @param blocks the returned block/transaction data
    * @param pruned whether to return full or pruned tx data
+   * @param skip_coinbase whether to return or skip coinbase transactions (they're in blocks regardless)
    * @param get_miner_tx_hash whether to calculate and return the miner (coinbase) tx hash
    *
    * The call will return at least min_block_count if possible, even if this contravenes max_tx_count
    *
    * @return true iff the blocks and transactions were found
    */
-  virtual bool get_blocks_from(uint64_t start_height, size_t min_block_count, size_t max_block_count, size_t max_tx_count, size_t max_size, std::vector<std::pair<std::pair<cryptonote::blobdata, crypto::hash>, std::vector<std::pair<crypto::hash, cryptonote::blobdata>>>>& blocks, bool pruned, bool get_miner_tx_hash) const = 0;
+  virtual bool get_blocks_from(uint64_t start_height, size_t min_block_count, size_t max_block_count, size_t max_tx_count, size_t max_size, std::vector<std::pair<std::pair<cryptonote::blobdata, crypto::hash>, std::vector<std::pair<crypto::hash, cryptonote::blobdata>>>>& blocks, bool pruned, bool skip_coinbase, bool get_miner_tx_hash) const = 0;
 
   /**
    * @brief fetches the prunable transaction blob with the given hash
@@ -1508,15 +1521,6 @@ public:
    * @return true if the image is present, otherwise false
    */
   virtual bool has_key_image(const crypto::key_image& img) const = 0;
-
-  /**
-   * @brief check if key images are stored as spent
-   *
-   * @param img the key images to check for
-   *
-   * @return true at element `i` if the `img[i]` is present, otherwise false
-   */
-  virtual std::vector<bool> has_key_images(const epee::span<const crypto::key_image> img) const;
 
   /**
    * @brief add a txpool transaction

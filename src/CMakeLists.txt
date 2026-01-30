@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2024, The Monero Project
+# Copyright (c) 2014-2022, The Zedcoin Project
 #
 # All rights reserved.
 #
@@ -34,13 +34,13 @@ if (WIN32 OR STATIC)
   add_definitions(-DMINIUPNP_STATICLIB)
 endif ()
 
-function (monero_private_headers group)
+function (zedcoin_private_headers group)
   source_group("${group}\\Private"
     FILES
       ${ARGN})
 endfunction ()
 
-function (monero_install_headers subdir)
+function (zedcoin_install_headers subdir)
   install(
     FILES       ${ARGN}
     DESTINATION "include/${subdir}"
@@ -58,7 +58,7 @@ function (enable_stack_trace target)
   endif()
 endfunction()
 
-function (monero_add_executable name)
+function (zedcoin_add_executable name)
   source_group("${name}"
     FILES
       ${ARGN})
@@ -76,12 +76,12 @@ function (monero_add_executable name)
       RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
   enable_stack_trace("${name}")
   
-  monero_set_target_no_relink("${name}")
-  monero_set_target_strip    ("${name}")
+  zedcoin_set_target_no_relink("${name}")
+  zedcoin_set_target_strip    ("${name}")
 endfunction ()
 
 include(Version)
-monero_add_library(version SOURCES ${CMAKE_BINARY_DIR}/version.cpp DEPENDS genversion)
+zedcoin_add_library(version SOURCES ${CMAKE_BINARY_DIR}/version.cpp DEPENDS genversion)
 
 add_subdirectory(common)
 add_subdirectory(crypto)
@@ -96,7 +96,6 @@ add_subdirectory(hardforks)
 add_subdirectory(blockchain_db)
 add_subdirectory(mnemonics)
 add_subdirectory(rpc)
-add_subdirectory(seraphis_crypto)
 if(NOT IOS)
   add_subdirectory(serialization)
 endif()
@@ -111,7 +110,8 @@ if(NOT IOS)
   add_subdirectory(gen_ssl_cert)
   add_subdirectory(daemonizer)
   add_subdirectory(daemon)
-  add_subdirectory(blockchain_utilities)
+add_subdirectory(blockchain_utilities)
+add_subdirectory(genesis)
 endif()
 
 if(BUILD_DEBUG_UTILITIES)

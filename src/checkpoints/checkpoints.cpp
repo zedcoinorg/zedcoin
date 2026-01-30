@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 //
 // All rights reserved.
 //
@@ -158,19 +158,6 @@ namespace cryptonote
     return m_points.rbegin()->first;
   }
   //---------------------------------------------------------------------------
-  uint64_t checkpoints::get_nearest_checkpoint_height(uint64_t block_height) const
-  {
-    if (m_points.empty())
-      return 0;
-
-    auto it = m_points.upper_bound(block_height);
-    if (it == m_points.begin())
-      return 0;
-
-    --it;
-    return it->first;
-  }
-  //---------------------------------------------------------------------------
   const std::map<uint64_t, crypto::hash>& checkpoints::get_points() const
   {
     return m_points;
@@ -313,23 +300,23 @@ namespace cryptonote
   {
     std::vector<std::string> records;
 
-    // All four MoneroPulse domains have DNSSEC on and valid
-    static const std::vector<std::string> dns_urls = { "checkpoints.moneropulse.se"
-						     , "checkpoints.moneropulse.org"
-						     , "checkpoints.moneropulse.net"
-						     , "checkpoints.moneropulse.co"
+    // All four ZedcoinPulse domains have DNSSEC on and valid
+    static const std::vector<std::string> dns_urls = { "checkpoints.zedcoinpulse.se"
+						     , "checkpoints.zedcoinpulse.org"
+						     , "checkpoints.zedcoinpulse.net"
+						     , "checkpoints.zedcoinpulse.co"
     };
 
-    static const std::vector<std::string> testnet_dns_urls = { "testpoints.moneropulse.se"
-							     , "testpoints.moneropulse.org"
-							     , "testpoints.moneropulse.net"
-							     , "testpoints.moneropulse.co"
+    static const std::vector<std::string> testnet_dns_urls = { "testpoints.zedcoinpulse.se"
+							     , "testpoints.zedcoinpulse.org"
+							     , "testpoints.zedcoinpulse.net"
+							     , "testpoints.zedcoinpulse.co"
     };
 
-    static const std::vector<std::string> stagenet_dns_urls = { "stagenetpoints.moneropulse.se"
-                   , "stagenetpoints.moneropulse.org"
-                   , "stagenetpoints.moneropulse.net"
-                   , "stagenetpoints.moneropulse.co"
+    static const std::vector<std::string> stagenet_dns_urls = { "stagenetpoints.zedcoinpulse.se"
+                   , "stagenetpoints.zedcoinpulse.org"
+                   , "stagenetpoints.zedcoinpulse.net"
+                   , "stagenetpoints.zedcoinpulse.co"
     };
 
     if (!tools::dns_utils::load_txt_records_from_dns(records, nettype == TESTNET ? testnet_dns_urls : nettype == STAGENET ? stagenet_dns_urls : dns_urls))

@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2024, The Monero Project
+# Copyright (c) 2014-2022, The Zedcoin Project
 #
 # All rights reserved.
 #
@@ -25,6 +25,8 @@
 # INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+include_directories(SYSTEM ${ZMQ_INCLUDE_PATH})
 
 set(rpc_base_sources
   rpc_args.cpp
@@ -82,36 +84,36 @@ set(daemon_rpc_server_private_headers
   zmq_server.h)
 
 
-monero_private_headers(rpc
+zedcoin_private_headers(rpc
   ${rpc_private_headers})
 
 set(rpc_pub_private_headers)
 
-monero_private_headers(daemon_rpc_server
+zedcoin_private_headers(daemon_rpc_server
   ${daemon_rpc_server_private_headers})
 
 
-monero_add_library(rpc_base
+zedcoin_add_library(rpc_base
   ${rpc_base_sources}
   ${rpc_base_headers}
   ${rpc_base_private_headers})
 
-monero_add_library(rpc
+zedcoin_add_library(rpc
   ${rpc_sources}
   ${rpc_headers}
   ${rpc_private_headers})
 
-monero_add_library(rpc_pub
+zedcoin_add_library(rpc_pub
   ${rpc_pub_sources}
   ${rpc_pub_headers}
   ${rpc_pub_private_headers})
 
-monero_add_library(daemon_messages
+zedcoin_add_library(daemon_messages
   ${daemon_messages_sources}
   ${daemon_messages_headers}
   ${daemon_messages_private_headers})
 
-monero_add_library(daemon_rpc_server
+zedcoin_add_library(daemon_rpc_server
   ${daemon_rpc_server_sources}
   ${daemon_rpc_server_headers}
   ${daemon_rpc_server_private_headers})
@@ -169,5 +171,7 @@ target_link_libraries(daemon_rpc_server
     ${Boost_REGEX_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     ${Boost_THREAD_LIBRARY}
-    PkgConfig::libzmq
+    ${ZMQ_LIB}
     ${EXTRA_LIBRARIES})
+target_include_directories(daemon_rpc_server PUBLIC ${ZMQ_INCLUDE_PATH})
+target_include_directories(obj_daemon_rpc_server PUBLIC ${ZMQ_INCLUDE_PATH})

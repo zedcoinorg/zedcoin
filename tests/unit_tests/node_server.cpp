@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 // 
 // All rights reserved.
 // 
@@ -37,7 +37,6 @@
 #include "cryptonote_protocol/cryptonote_protocol_handler.inl"
 #include "unit_tests_utils.h"
 #include <condition_variable>
-#include <thread>
 
 #define MAKE_IPV4_ADDRESS(a,b,c,d) epee::net_utils::ipv4_network_address{MAKE_IP(a,b,c,d),0}
 #define MAKE_IPV4_ADDRESS_PORT(a,b,c,d,e) epee::net_utils::ipv4_network_address{MAKE_IP(a,b,c,d),e}
@@ -406,8 +405,8 @@ TEST(node_server, bind_same_p2p_port)
     Relevant part about REUSEADDR from man:
     https://www.man7.org/linux/man-pages/man7/ip.7.html
 
-    For Mac OSX and OpenBSD, set the following alias (by running the command as root), before running the test, or else it will fail:
-    ifconfig lo0 alias 127.0.0.2
+    For Mac OSX, set the following alias, before running the test, or else it will fail:
+    sudo ifconfig lo0 alias 127.0.0.2
     */
     vm.find(nodetool::arg_p2p_bind_ip.name)->second   = boost::program_options::variable_value(std::string("127.0.0.2"), false);
     vm.find(nodetool::arg_p2p_bind_port.name)->second = boost::program_options::variable_value(std::string(port), false);

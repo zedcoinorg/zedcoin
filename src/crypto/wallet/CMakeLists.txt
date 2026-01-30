@@ -1,4 +1,4 @@
-# Copyright (c) 2020-2024, The Monero Project
+# Copyright (c) 2020-2022, The Zedcoin Project
 
 #
 # All rights reserved.
@@ -59,5 +59,4 @@ else ()
   add_library(wallet-crypto $<TARGET_OBJECTS:${CRYPTO_TARGET}>)
   target_link_libraries(wallet-crypto cncrypto)
 endif ()
-
 

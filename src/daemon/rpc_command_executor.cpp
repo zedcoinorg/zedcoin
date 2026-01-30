@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 // 
 // All rights reserved.
 // 
@@ -614,8 +614,8 @@ bool t_rpc_command_executor::mining_status() {
     uint64_t daily = 86400ull / mres.block_target * mres.block_reward * ratio;
     uint64_t monthly = 86400ull / mres.block_target * 30.5 * mres.block_reward * ratio;
     uint64_t yearly = 86400ull / mres.block_target * 356 * mres.block_reward * ratio;
-    tools::msg_writer() << "Expected: " << cryptonote::print_money(daily) << " monero daily, "
-        << cryptonote::print_money(monthly) << " monero monthly, " << cryptonote::print_money(yearly) << " yearly";
+    tools::msg_writer() << "Expected: " << cryptonote::print_money(daily) << " zedcoin daily, "
+        << cryptonote::print_money(monthly) << " zedcoin monthly, " << cryptonote::print_money(yearly) << " yearly";
   }
 
   return true;
@@ -644,11 +644,7 @@ bool t_rpc_command_executor::print_connections() {
     }
   }
 
-  int host_field_width = 15;
-  for (const auto &conn : res.connections)
-    host_field_width = std::max(host_field_width, 8 + (int) conn.address.length());
-
-  tools::msg_writer() << std::setw(host_field_width) << std::left << "Remote Host"
+  tools::msg_writer() << std::setw(30) << std::left << "Remote Host"
       << std::setw(8) << "Type"
       << std::setw(6) << "SSL"
       << std::setw(20) << "Peer id"
@@ -665,11 +661,11 @@ bool t_rpc_command_executor::print_connections() {
   for (auto & info : res.connections)
   {
     std::string address = info.incoming ? "INC " : "OUT ";
-    address += info.address;
+    address += info.ip + ":" + info.port;
     //std::string in_out = info.incoming ? "INC " : "OUT ";
     tools::msg_writer() 
      //<< std::setw(30) << std::left << in_out
-     << std::setw(host_field_width) << std::left << address
+     << std::setw(30) << std::left << address
      << std::setw(8) << (get_address_type_name((epee::net_utils::address_type)info.address_type))
      << std::setw(6) << (info.ssl ? "yes" : "no")
      << std::setw(20) << info.peer_id
@@ -779,7 +775,7 @@ bool t_rpc_command_executor::print_blockchain_info(int64_t start_block_index, ui
         return true;
       }
     }
-    if ((uint64_t)-start_block_index >= ires.height)
+    if (start_block_index < 0 && (uint64_t)-start_block_index >= ires.height)
     {
       tools::fail_msg_writer() << "start offset is larger than blockchain height";
       return true;
@@ -1418,8 +1414,8 @@ bool t_rpc_command_executor::stop_daemon()
 //# ifdef WIN32
 //    // Stop via service API
 //    // TODO - this is only temporary!  Get rid of hard-coded constants!
-//    bool ok = windows::stop_service("BitMonero Daemon");
-//    ok = windows::uninstall_service("BitMonero Daemon");
+//    bool ok = windows::stop_service("BitZedcoin Daemon");
+//    ok = windows::uninstall_service("BitZedcoin Daemon");
 //    //bool ok = windows::stop_service(SERVICE_NAME);
 //    //ok = windows::uninstall_service(SERVICE_NAME);
 //    if (ok)
@@ -1463,10 +1459,10 @@ bool t_rpc_command_executor::print_status()
   bool daemon_is_alive = m_rpc_client->check_connection();
 
   if(daemon_is_alive) {
-    tools::success_msg_writer() << "monerod is running";
+    tools::success_msg_writer() << "zedcoind is running";
   }
   else {
-    tools::fail_msg_writer() << "monerod is NOT running";
+    tools::fail_msg_writer() << "zedcoind is NOT running";
   }
 
   return true;

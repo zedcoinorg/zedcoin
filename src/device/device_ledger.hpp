@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2024, The Monero Project
+// Copyright (c) 2017-2022, The Monero Project
 // 
 // All rights reserved.
 // 
@@ -35,7 +35,8 @@
 #include "device.hpp"
 #include "log.hpp"
 #include "device_io_hid.hpp"
-#include <mutex>
+#include <boost/thread/mutex.hpp>
+#include <boost/thread/recursive_mutex.hpp>
 
 namespace hw {
 
@@ -85,6 +86,10 @@ namespace hw {
     #define SW_INS_NOT_SUPPORTED                    0x6d00
     #define SW_PROTOCOL_NOT_SUPPORTED               0x6e00
     #define SW_UNKNOWN                              0x6f00
+
+    namespace {
+        bool apdu_verbose =true;
+    }
 
     void set_apdu_verbose(bool verbose);
 
@@ -139,8 +144,8 @@ namespace hw {
     class device_ledger : public hw::device {
     private:
         // Locker for concurrent access
-        mutable std::recursive_mutex   device_locker;
-        mutable std::mutex   command_locker;
+        mutable boost::recursive_mutex   device_locker;
+        mutable boost::mutex   command_locker;
 
         //IO
         hw::io::device_io_hid hw_device;

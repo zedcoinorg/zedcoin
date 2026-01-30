@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2024, The Monero Project
+# Copyright (c) 2014-2022, The Zedcoin Project
 #
 # All rights reserved.
 #
@@ -52,6 +52,7 @@ set(unit_tests_sources
   epee_serialization.cpp
   epee_utils.cpp
   expect.cpp
+  fee.cpp
   json_serialization.cpp
   get_xtype_from_string.cpp
   hashchain.cpp
@@ -87,13 +88,12 @@ set(unit_tests_sources
   test_protocol_pack.cpp
   threadpool.cpp
   tx_proof.cpp
-  tx_verification_utils.cpp
   hardfork.cpp
   unbound.cpp
   uri.cpp
   util.cpp
   varint.cpp
-  verRctNonSemanticsSimple.cpp
+  ver_rct_non_semantics_simple_cached.cpp
   ringct.cpp
   output_selection.cpp
   vercmp.cpp
@@ -108,7 +108,7 @@ set(unit_tests_sources
 set(unit_tests_headers
   unit_tests_utils.h)
 
-monero_add_minimal_executable(unit_tests
+zedcoin_add_minimal_executable(unit_tests
   ${unit_tests_sources}
   ${unit_tests_headers})
 target_link_libraries(unit_tests
@@ -123,7 +123,6 @@ target_link_libraries(unit_tests
     rpc
     net
     serialization
-    seraphis_crypto
     wallet
     p2p
     version
@@ -132,15 +131,19 @@ target_link_libraries(unit_tests
     ${GTEST_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
     ${EXTRA_LIBRARIES}
-    PkgConfig::libzmq)
+    ${ZMQ_LIB})
 set_property(TARGET unit_tests
   PROPERTY
     FOLDER "tests")
 
-set_property(TARGET unit_tests
-  APPEND_STRING
-  PROPERTY
-    COMPILE_FLAGS " -Wno-undef -Wno-sign-compare")
+if (NOT MSVC)
+  set_property(TARGET unit_tests
+    APPEND_STRING
+    PROPERTY
+      COMPILE_FLAGS " -Wno-undef -Wno-sign-compare")
+endif ()
+
+SET_PROPERTY(SOURCE main.cpp PROPERTY COMPILE_FLAGS -DDEFAULT_DATA_DIR="\\"${CMAKE_SOURCE_DIR}/tests/data\\"")
 
 SET_PROPERTY(SOURCE memwipe.cpp PROPERTY COMPILE_FLAGS -Ofast)
 
@@ -148,6 +151,6 @@ add_test(
   NAME    unit_tests
   COMMAND unit_tests --data-dir "${TEST_DATA_DIR}")
 
-monero_add_minimal_executable(test_notifier test_notifier.cpp)
+zedcoin_add_minimal_executable(test_notifier test_notifier.cpp)
 target_link_libraries(test_notifier ${EXTRA_LIBRARIES})
 set_property(TARGET test_notifier PROPERTY FOLDER "tests")

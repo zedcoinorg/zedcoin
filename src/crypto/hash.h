@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 // 
 // All rights reserved.
 // 
@@ -71,7 +71,7 @@ namespace crypto {
     return h;
   }
 
-  static void cn_variant1_check(const std::size_t length, const int variant)
+  static constexpr void cn_variant1_check(const std::size_t length, const int variant)
   {
     // see VARIANT1_CHECK in slow-hash.c
     if (variant == 1 && length < 43)

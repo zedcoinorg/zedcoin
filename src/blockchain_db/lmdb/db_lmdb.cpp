@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are
@@ -887,7 +887,7 @@ void BlockchainLMDB::remove_block()
       throw1(DB_ERROR(lmdb_error("Failed to add removal of block info to db transaction: ", result).c_str()));
 }
 
-uint64_t BlockchainLMDB::add_transaction_data(const crypto::hash& blk_hash, const transaction& tx, const epee::span<const std::uint8_t> blob, const crypto::hash& tx_hash, const crypto::hash& tx_prunable_hash)
+uint64_t BlockchainLMDB::add_transaction_data(const crypto::hash& blk_hash, const std::pair<transaction, blobdata_ref>& txp, const crypto::hash& tx_hash, const crypto::hash& tx_prunable_hash)
 {
   LOG_PRINT_L3("BlockchainLMDB::" << __func__);
   check_open();
@@ -913,6 +913,7 @@ uint64_t BlockchainLMDB::add_transaction_data(const crypto::hash& blk_hash, cons
     throw1(DB_ERROR(lmdb_error(std::string("Error checking if tx index exists for tx hash ") + epee::string_tools::pod_to_hex(tx_hash) + ": ", result).c_str()));
   }
 
+  const cryptonote::transaction &tx = txp.first;
   txindex ti;
   ti.key = tx_hash;
   ti.data.tx_id = tx_id;
@@ -925,6 +926,8 @@ uint64_t BlockchainLMDB::add_transaction_data(const crypto::hash& blk_hash, cons
   result = mdb_cursor_put(m_cur_tx_indices, (MDB_val *)&zerokval, &val_h, 0);
   if (result)
     throw0(DB_ERROR(lmdb_error("Failed to add tx data to db transaction: ", result).c_str()));
+
+  const cryptonote::blobdata_ref &blob = txp.second;
 
   unsigned int unprunable_size = tx.unprunable_size;
   if (unprunable_size == 0)
@@ -1346,7 +1349,7 @@ static bool disable_ntfs_compression(const boost::filesystem::path& filepath)
     nullptr
   );
 
-  if (file_handle == INVALID_HANDLE_VALUE) 
+  if (file_handle == INVALID_HANDLE_VALUE)
   {
     MERROR("Failed to open handle: " << filepath.string() << ". Error: " << ::GetLastError());
     return false;
@@ -1397,7 +1400,7 @@ void BlockchainLMDB::open(const std::string& filename, const int db_flags)
   }
 
 #ifdef WIN32
-  // ensure NTFS compression is disabled on the directory and database file to avoid corruption of the blockchain
+  // ensure NTFS compression is disabled on the directory and database file to avoid corruption of the blockchain 
   if (!disable_ntfs_compression(filename))
     LOG_PRINT_L0("Failed to disable NTFS compression on folder: " << filename << ". Error: " << ::GetLastError());
   boost::filesystem::path datafile(filename);
@@ -1565,7 +1568,7 @@ void BlockchainLMDB::open(const std::string& filename, const int db_flags)
         mdb_env_close(m_env);
         m_open = false;
         MFATAL("Existing lmdb database needs to be converted, which cannot be done on a read-only database.");
-        MFATAL("Please run monerod once to convert the database.");
+        MFATAL("Please run zedcoind once to convert the database.");
         return;
       }
       // Note that there was a schema change within version 0 as well.
@@ -1748,6 +1751,22 @@ std::string BlockchainLMDB::get_db_name() const
 
   return std::string("lmdb");
 }
+
+// TODO: this?
+bool BlockchainLMDB::lock()
+{
+  LOG_PRINT_L3("BlockchainLMDB::" << __func__);
+  check_open();
+  return false;
+}
+
+// TODO: this?
+void BlockchainLMDB::unlock()
+{
+  LOG_PRINT_L3("BlockchainLMDB::" << __func__);
+  check_open();
+}
+
 
 // The below two macros are for DB access within block add/remove, whether
 // regular batch txn is in use or not. m_write_txn is used as a batch txn, even
@@ -2399,15 +2418,14 @@ bool BlockchainLMDB::for_all_alt_blocks(std::function<bool(const crypto::hash&, 
     const crypto::hash &blkid = *(const crypto::hash*)k.mv_data;
     if (v.mv_size < sizeof(alt_block_data_t))
       throw0(DB_ERROR("alt_blocks record is too small"));
-    alt_block_data_t data;
-    memcpy(&data, v.mv_data, sizeof(data));
+    const alt_block_data_t *data = (const alt_block_data_t*)v.mv_data;
     cryptonote::blobdata_ref bd;
     if (include_blob)
     {
       bd = {reinterpret_cast<const char*>(v.mv_data) + sizeof(alt_block_data_t), v.mv_size - sizeof(alt_block_data_t)};
     }
 
-    if (!f(blkid, data, &bd)) {
+    if (!f(blkid, *data, &bd)) {
       ret = false;
       break;
     }
@@ -3190,59 +3208,7 @@ bool BlockchainLMDB::get_pruned_tx_blobs_from(const crypto::hash& h, size_t coun
   return true;
 }
 
-std::vector<crypto::hash> BlockchainLMDB::get_txids_loose(const crypto::hash& txid_template, std::uint32_t bits, uint64_t max_num_txs)
-{
-  LOG_PRINT_L3("BlockchainLMDB::" << __func__);
-  check_open();
-
-  std::vector<crypto::hash> matching_hashes;
-
-  TXN_PREFIX_RDONLY();  // Start a read-only transaction
-  RCURSOR(tx_indices);  // Open cursors to the tx_indices and txpool_meta databases
-  RCURSOR(txpool_meta);
-
-  // Search on-chain and pool transactions together, starting with on-chain txs
-  MDB_cursor* cursor = m_cur_tx_indices;
-  MDB_val k = zerokval; // tx_indicies DB uses a dummy key
-  MDB_val_set(v, txid_template); // tx_indicies DB indexes data values by crypto::hash value on front
-  MDB_cursor_op op = MDB_GET_BOTH_RANGE; // Set the cursor to the first key/value pair >= the given key
-  bool doing_chain = true; // this variable tells us whether we are processing chain or pool txs
-  while (1)
-  {
-    const int get_result = mdb_cursor_get(cursor, &k, &v, op);
-    op = doing_chain ? MDB_NEXT_DUP : MDB_NEXT; // Set the cursor to the next key/value pair
-    if (get_result && get_result != MDB_NOTFOUND)
-      throw0(DB_ERROR(lmdb_error("DB error attempting to fetch txid range", get_result).c_str()));
-
-    // In tx_indicies, the hash is stored at the data, in txpool_meta at the key
-    const crypto::hash* const p_dbtxid = (const crypto::hash*)(doing_chain ? v.mv_data : k.mv_data);
-
-    // Check if we reached the end of a DB or the hashes no longer match the template
-    if (get_result == MDB_NOTFOUND || compare_hash32_reversed_nbits(txid_template, *p_dbtxid, bits))
-    {
-      if (doing_chain) // done with chain processing, switch to pool processing
-      {
-        k.mv_size = sizeof(crypto::hash); // txpool_meta DB is indexed using crypto::hash as keys
-        k.mv_data = (void*) txid_template.data;
-        cursor = m_cur_txpool_meta; // switch databases
-        op = MDB_SET_RANGE; // Set the cursor to the first key >= the given key
-        doing_chain = false;
-        continue;
-      }
-      break; // if we get to this point, then we finished pool processing and we are done
-    }
-    else if (matching_hashes.size() >= max_num_txs && max_num_txs != 0)
-      throw0(TX_EXISTS("number of tx hashes in template range exceeds maximum"));
-
-    matching_hashes.push_back(*p_dbtxid);
-  }
-
-  TXN_POSTFIX_RDONLY();  // End the read-only transaction
-
-  return matching_hashes;
-}
-
-bool BlockchainLMDB::get_blocks_from(uint64_t start_height, size_t min_block_count, size_t max_block_count, size_t max_tx_count, size_t max_size, std::vector<std::pair<std::pair<cryptonote::blobdata, crypto::hash>, std::vector<std::pair<crypto::hash, cryptonote::blobdata>>>>& blocks, bool pruned, bool get_miner_tx_hash) const
+bool BlockchainLMDB::get_blocks_from(uint64_t start_height, size_t min_block_count, size_t max_block_count, size_t max_tx_count, size_t max_size, std::vector<std::pair<std::pair<cryptonote::blobdata, crypto::hash>, std::vector<std::pair<crypto::hash, cryptonote::blobdata>>>>& blocks, bool pruned, bool skip_coinbase, bool get_miner_tx_hash) const
 {
   LOG_PRINT_L3("BlockchainLMDB::" << __func__);
   check_open();
@@ -3298,6 +3264,7 @@ bool BlockchainLMDB::get_blocks_from(uint64_t start_height, size_t min_block_cou
       val_tx_id.mv_size = sizeof(tx_id);
     }
 
+    if (skip_coinbase)
     {
       result = mdb_cursor_get(m_cur_txs_pruned, &val_tx_id, &v, op);
       if (result)
@@ -3313,7 +3280,7 @@ bool BlockchainLMDB::get_blocks_from(uint64_t start_height, size_t min_block_cou
     op = MDB_NEXT;
 
     current_block.second.reserve(b.tx_hashes.size());
-    num_txes += b.tx_hashes.size() + 1;
+    num_txes += b.tx_hashes.size() + (skip_coinbase ? 0 : 1);
     for (const auto &tx_hash: b.tx_hashes)
     {
       // get pruned data
@@ -3606,27 +3573,6 @@ bool BlockchainLMDB::has_key_image(const crypto::key_image& img) const
 
   MDB_val k = {sizeof(img), (void *)&img};
   ret = (mdb_cursor_get(m_cur_spent_keys, (MDB_val *)&zerokval, &k, MDB_GET_BOTH) == 0);
-
-  TXN_POSTFIX_RDONLY();
-  return ret;
-}
-
-std::vector<bool> BlockchainLMDB::has_key_images(const epee::span<const crypto::key_image> img) const
-{
-  LOG_PRINT_L3("BlockchainLMDB::" << __func__);
-  check_open();
-
-  std::vector<bool> ret(img.size(), true);
-
-  TXN_PREFIX_RDONLY();
-  RCURSOR(spent_keys);
-
-  for (std::size_t i = 0; i < img.size(); ++i)
-  {
-    crypto::key_image ki = img[i];
-    MDB_val k = {sizeof(ki), reinterpret_cast<void*>(&ki)};
-    ret[i] = (mdb_cursor_get(m_cur_spent_keys, const_cast<MDB_val *>(&zerokval), &k, MDB_GET_BOTH) == 0);
-  }
 
   TXN_POSTFIX_RDONLY();
   return ret;
@@ -4540,10 +4486,11 @@ bool BlockchainLMDB::get_alt_block(const crypto::hash &blkid, alt_block_data_t *
   if (v.mv_size < sizeof(alt_block_data_t))
     throw0(DB_ERROR("Record size is less than expected"));
 
+  const alt_block_data_t *ptr = (const alt_block_data_t*)v.mv_data;
   if (data)
-    memcpy(data, v.mv_data, sizeof(alt_block_data_t));
+    *data = *ptr;
   if (blob)
-    blob->assign(((const char*)(v.mv_data)) + sizeof(alt_block_data_t), v.mv_size - sizeof(alt_block_data_t));
+    blob->assign((const char*)(ptr + 1), v.mv_size - sizeof(alt_block_data_t));
 
   TXN_POSTFIX_RDONLY();
   return true;
@@ -5150,8 +5097,7 @@ void BlockchainLMDB::migrate_0_1()
       if (!parse_and_validate_block_from_blob(bd, b))
         throw0(DB_ERROR("Failed to parse block from blob retrieved from the db"));
 
-      const auto miner_blob = tx_to_blob(b.miner_tx);
-      add_transaction(null_hash, b.miner_tx, epee::strspan<std::uint8_t>(miner_blob));
+      add_transaction(null_hash, std::make_pair(b.miner_tx, tx_to_blob(b.miner_tx)));
       for (unsigned int j = 0; j<b.tx_hashes.size(); j++) {
         transaction tx;
         hk.mv_data = &b.tx_hashes[j];
@@ -5161,7 +5107,7 @@ void BlockchainLMDB::migrate_0_1()
         bd = {reinterpret_cast<char*>(v.mv_data), v.mv_size};
         if (!parse_and_validate_tx_from_blob(bd, tx))
           throw0(DB_ERROR("Failed to parse tx from blob retrieved from the db"));
-        add_transaction(null_hash, std::move(tx), epee::strspan<std::uint8_t>(bd), &b.tx_hashes[j]);
+        add_transaction(null_hash, std::make_pair(std::move(tx), bd), &b.tx_hashes[j]);
         result = mdb_cursor_del(c_txs, 0);
         if (result)
           throw0(DB_ERROR(lmdb_error("Failed to get record from txs: ", result).c_str()));

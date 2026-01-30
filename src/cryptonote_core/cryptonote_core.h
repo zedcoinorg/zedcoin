@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 //
 // All rights reserved.
 //
@@ -42,7 +42,8 @@
 #include "cryptonote_protocol/enums.h"
 #include "common/download.h"
 #include "common/command_line.h"
-#include "blockchain_and_pool.h"
+#include "tx_pool.h"
+#include "blockchain.h"
 #include "cryptonote_basic/miner.h"
 #include "cryptonote_basic/connection_context.h"
 #include "warnings.h"
@@ -234,8 +235,8 @@ namespace cryptonote
       *
       * @note see Blockchain::create_block_template
       */
-     virtual bool get_block_template(block& b, const account_public_address& adr, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, uint64_t &cumulative_weight, const blobdata& ex_nonce, uint64_t &seed_height, crypto::hash &seed_hash) override;
-     virtual bool get_block_template(block& b, const crypto::hash *prev_block, const account_public_address& adr, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, uint64_t &cumulative_weight, const blobdata& ex_nonce, uint64_t &seed_height, crypto::hash &seed_hash);
+     virtual bool get_block_template(block& b, const account_public_address& adr, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce, uint64_t &seed_height, crypto::hash &seed_hash) override;
+     virtual bool get_block_template(block& b, const crypto::hash *prev_block, const account_public_address& adr, difficulty_type& diffic, uint64_t& height, uint64_t& expected_reward, const blobdata& ex_nonce, uint64_t &seed_height, crypto::hash &seed_hash);
 
      /**
       * @copydoc Blockchain::get_miner_data
@@ -593,7 +594,7 @@ namespace cryptonote
       *
       * @note see Blockchain::find_blockchain_supplement(const uint64_t, const std::list<crypto::hash>&, std::vector<std::pair<cryptonote::blobdata, std::vector<transaction> > >&, uint64_t&, uint64_t&, size_t) const
       */
-     bool find_blockchain_supplement(const uint64_t req_start_block, const std::list<crypto::hash>& qblock_ids, std::vector<std::pair<std::pair<cryptonote::blobdata, crypto::hash>, std::vector<std::pair<crypto::hash, cryptonote::blobdata> > > >& blocks, uint64_t& total_height, crypto::hash& top_hash, uint64_t& start_height, bool pruned, bool get_miner_tx_hash, size_t max_block_count, size_t max_tx_count) const;
+     bool find_blockchain_supplement(const uint64_t req_start_block, const std::list<crypto::hash>& qblock_ids, std::vector<std::pair<std::pair<cryptonote::blobdata, crypto::hash>, std::vector<std::pair<crypto::hash, cryptonote::blobdata> > > >& blocks, uint64_t& total_height, uint64_t& start_height, bool pruned, bool get_miner_tx_hash, size_t max_block_count, size_t max_tx_count) const;
 
      /**
       * @copydoc Blockchain::get_tx_outputs_gindexs
@@ -1059,9 +1060,8 @@ namespace cryptonote
 
      uint64_t m_test_drop_download_height = 0; //!< height under which to drop incoming blocks, if doing so
 
-     BlockchainAndPool m_bap; //! Contains owned instances of Blockchain and tx_memory_pool
-     tx_memory_pool& m_mempool; //!< ref to transaction pool instance in m_bap
-     Blockchain& m_blockchain_storage; //!< ref to Blockchain instance in m_bap
+     tx_memory_pool m_mempool; //!< transaction pool instance
+     Blockchain m_blockchain_storage; //!< Blockchain instance
 
      i_cryptonote_protocol* m_pprotocol; //!< cryptonote protocol instance
 

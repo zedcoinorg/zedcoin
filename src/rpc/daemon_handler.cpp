@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2024, The Monero Project
+// Copyright (c) 2017-2022, The Zedcoin Project
 // 
 // All rights reserved.
 // 
@@ -128,7 +128,7 @@ namespace rpc
   {
     std::vector<std::pair<std::pair<blobdata, crypto::hash>, std::vector<std::pair<crypto::hash, blobdata> > > > blocks;
 
-    if(!m_core.find_blockchain_supplement(req.start_height, req.block_ids, blocks, res.current_height, res.top_block_hash, res.start_height, req.prune, true, COMMAND_RPC_GET_BLOCKS_FAST_MAX_BLOCK_COUNT, COMMAND_RPC_GET_BLOCKS_FAST_MAX_TX_COUNT))
+    if(!m_core.find_blockchain_supplement(req.start_height, req.block_ids, blocks, res.current_height, res.start_height, req.prune, true, COMMAND_RPC_GET_BLOCKS_FAST_MAX_BLOCK_COUNT, COMMAND_RPC_GET_BLOCKS_FAST_MAX_TX_COUNT))
     {
       res.status = Message::STATUS_FAILED;
       res.error_details = "core::find_blockchain_supplement() returned false";
@@ -844,10 +844,19 @@ namespace rpc
   {
     res.hard_fork_version = m_core.get_blockchain_storage().get_current_hard_fork_version();
 
-    m_core.get_blockchain_storage().get_dynamic_base_fee_estimate_2021_scaling(req.num_grace_blocks, res.fees);
-    res.estimated_base_fee = res.fees.at(0);
 
+    if (res.hard_fork_version < HF_VERSION_PER_BYTE_FEE)
     {
+       res.fees.clear();
+       res.estimated_base_fee = m_core.get_blockchain_storage().get_dynamic_base_fee_estimate(req.num_grace_blocks);
+       res.size_scale = 1024; // per KiB fee
+       res.fee_mask = 1;
+    }
+    else
+    {
+      m_core.get_blockchain_storage().get_dynamic_base_fee_estimate_2021_scaling(req.num_grace_blocks, res.fees);
+      res.estimated_base_fee = res.fees.at(0);
+
       res.size_scale = 1; // per byte fee
       res.fee_mask = Blockchain::get_fee_quantization_mask();
     }

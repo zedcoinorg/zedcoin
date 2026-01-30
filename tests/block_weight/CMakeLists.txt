@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2024, The Monero Project
+# Copyright (c) 2014-2022, The Zedcoin Project
 #
 # All rights reserved.
 #
@@ -26,14 +26,12 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-find_package(Python3 REQUIRED)
-
 set(block_weight_sources
   block_weight.cpp)
 
 set(block_weight_headers)
 
-monero_add_minimal_executable(block_weight
+zedcoin_add_minimal_executable(block_weight
   ${block_weight_sources}
   ${block_weight_headers})
 target_link_libraries(block_weight
@@ -44,4 +42,4 @@ target_link_libraries(block_weight
 
 add_test(
   NAME    block_weight
-  COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/compare.py ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/block_weight.py ${CMAKE_CURRENT_BINARY_DIR}/block_weight)
+  COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/compare.py ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/block_weight.py ${CMAKE_CURRENT_BINARY_DIR}/block_weight)

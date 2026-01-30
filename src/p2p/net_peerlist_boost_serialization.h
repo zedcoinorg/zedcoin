@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 // 
 // All rights reserved.
 // 
@@ -31,7 +31,6 @@
 #pragma once
 
 #include <cstring>
-#include <boost/serialization/split_free.hpp>
 
 #include "common/expect.h"
 #include "net/net_utils_base.h"

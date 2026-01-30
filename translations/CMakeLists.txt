@@ -1,4 +1,4 @@
-# Copyright (c) 2017-2024, The Monero Project
+# Copyright (c) 2017-2022, The Zedcoin Project
 #
 # All rights reserved.
 #
@@ -26,7 +26,7 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.5)
 
 project(translations)
 

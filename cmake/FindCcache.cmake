@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2024, The Monero Project
+# Copyright (c) 2014-2022, The Zedcoin Project
 #
 # All rights reserved.
 #
@@ -31,7 +31,7 @@
 #
 # Usage of this module as follows:
 #
-#     project(monero)
+#     project(zedcoin)
 #     include(FindCcache) # Include AFTER the project() macro to be able to reach the CMAKE_CXX_COMPILER variable
 #
 # Properties modified by this module:
@@ -44,7 +44,7 @@ if (CCACHE_FOUND)
 	# Try to compile a test program with ccache, in order to verify if it really works. (needed on exotic setups)
 	set(TEST_PROJECT "${CMAKE_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/CMakeTmp")
 	file(WRITE "${TEST_PROJECT}/CMakeLists.txt" [=[
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.5)
 project(test)
 option (CCACHE "")
 file(WRITE "${CMAKE_SOURCE_DIR}/test.cpp" "int main() { return 0; }")

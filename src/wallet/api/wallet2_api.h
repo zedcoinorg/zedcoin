@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 // 
 // All rights reserved.
 // 
@@ -31,18 +31,17 @@
 #pragma once
 
 
-#include <cstdint>
-#include <ctime>
-#include <iostream>
-#include <list>
-#include <optional>
-#include <set>
-#include <stdexcept>
 #include <string>
 #include <vector>
+#include <list>
+#include <set>
+#include <ctime>
+#include <iostream>
+#include <stdexcept>
+#include <cstdint>
 
 //  Public interface for libwallet library
-namespace Monero {
+namespace Zedcoin {
 
 enum NetworkType : uint8_t {
     MAINNET = 0,
@@ -55,9 +54,18 @@ enum NetworkType : uint8_t {
         void onStartup();
     }
 
-    // backwards compatible shim for old declaration of handmade optional<> struct
     template<typename T>
-    using optional = std::optional<T>;
+    class optional {
+      public:
+        optional(): set(false) {}
+        optional(const T &t): t(t), set(true) {}
+        const T &operator*() const { return t; }
+        T &operator*() { return t; }
+        operator bool() const { return set; }
+      private:
+        T t;
+        bool set;
+    };
 
 /**
  * @brief Transaction-like interface for sending money
@@ -314,10 +322,9 @@ struct SubaddressAccount
 };
 
 struct MultisigState {
-    MultisigState() : isMultisig(false), kexIsDone(false), isReady(false), threshold(0), total(0) {}
+    MultisigState() : isMultisig(false), isReady(false), threshold(0), total(0) {}
 
     bool isMultisig;
-    bool kexIsDone;
     bool isReady;
     uint32_t threshold;
     uint32_t total;
@@ -541,7 +548,7 @@ struct Wallet
      * \param upper_transaction_size_limit
      * \param daemon_username
      * \param daemon_password
-     * \param lightWallet - deprecated
+     * \param lightWallet - start wallet in light mode, connect to a openzedcoin compatible server.
      * \param proxy_address - set proxy address, empty string to disable
      * \return  - true on success
      */
@@ -800,15 +807,6 @@ struct Wallet
      * @return new info string if more rounds required or an empty string if wallet creation is done
      */
     virtual std::string exchangeMultisigKeys(const std::vector<std::string> &info, const bool force_update_use_with_caution) = 0;
-    /**
-     * @brief getMultisigKeyExchangeBooster - obtain partial information for the key exchange round after the in-progress round,
-     *                                        to speed up another signer's key exchange process
-     * @param info - base58 encoded key derivations returned by makeMultisig or exchangeMultisigKeys function call
-     * @param threshold - number of required signers to make valid transaction. Must be <= number of participants.
-     * @param num_signers - total number of multisig participants.
-     * @return new info string if more rounds required or exception if no more rounds (i.e. no rounds to boost)
-     */
-    virtual std::string getMultisigKeyExchangeBooster(const std::vector<std::string> &info, const uint32_t threshold, const uint32_t num_signers) = 0;
     /**
      * @brief exportMultisigImages - exports transfers' key images
      * @param images - output paramter for hex encoded array of images
@@ -1110,6 +1108,12 @@ struct Wallet
     //! secondary key reuse mitigation
     virtual void keyReuseMitigation2(bool mitigation) = 0;
 
+    //! Light wallet authenticate and login
+    virtual bool lightWalletLogin(bool &isNewWallet) const = 0;
+    
+    //! Initiates a light wallet import wallet request
+    virtual bool lightWalletImportWalletRequest(std::string &payment_id, uint64_t &fee, bool &new_request, bool &request_fulfilled, std::string &payment_address, std::string &status) = 0;
+
     //! locks/unlocks the keys file; returns true on success
     virtual bool lockKeysFile() = 0;
     virtual bool unlockKeysFile() = 0;
@@ -1378,7 +1382,7 @@ struct WalletManager
     //! stops mining
     virtual bool stopMining() = 0;
 
-    //! resolves an OpenAlias address to a monero address
+    //! resolves an OpenAlias address to a zedcoin address
     virtual std::string resolveOpenAlias(const std::string &address, bool &dnssec_valid) const = 0;
 
     //! checks for an update and returns version, hash and url

@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2024, The Monero Project
+# Copyright (c) 2014-2022, The Zedcoin Project
 #
 # All rights reserved.
 #
@@ -29,12 +29,10 @@
 set(crypto_sources
   aesb.c
   blake256.c
-  blake2b.c
   chacha.c
   crypto-ops-data.c
   crypto-ops.c
   crypto.cpp
-  generators.cpp
   groestl.c
   hash-extra-blake.c
   hash-extra-groestl.c
@@ -60,11 +58,11 @@ include_directories(${RANDOMX_INCLUDE})
 
 set(crypto_headers)
 
-monero_find_all_headers(crypto_private_headers "${CMAKE_CURRENT_SOURCE_DIR}")
+zedcoin_find_all_headers(crypto_private_headers "${CMAKE_CURRENT_SOURCE_DIR}")
 
-monero_private_headers(cncrypto
+zedcoin_private_headers(cncrypto
   ${crypto_private_headers})
-monero_add_library(cncrypto
+zedcoin_add_library(cncrypto
   ${crypto_sources}
   ${crypto_headers}
   ${crypto_private_headers})
@@ -73,7 +71,7 @@ target_link_libraries(cncrypto
     epee
     randomx
     ${Boost_SYSTEM_LIBRARY}
-    ${sodium_LIBRARIES}
+    ${SODIUM_LIBRARY}
   PRIVATE
     ${EXTRA_LIBRARIES})
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2024, The Monero Project
+// Copyright (c) 2017-2022, The Zedcoin Project
 //
 // All rights reserved.
 //
@@ -165,7 +165,7 @@ namespace trezor {
         auto res = get_address();
 
         cryptonote::address_parse_info info{};
-        bool r = cryptonote::get_account_address_from_str(info, this->m_network_type, res->address());
+        bool r = cryptonote::get_account_address_from_str(info, this->network_type, res->address());
         CHECK_AND_ASSERT_MES(r, false, "Could not parse returned address. Address parse failed: " + res->address());
         CHECK_AND_ASSERT_MES(!info.is_subaddress, false, "Trezor returned a sub address");
 
@@ -235,7 +235,7 @@ namespace trezor {
     /*                              TREZOR PROTOCOL                            */
     /* ======================================================================= */
 
-    std::shared_ptr<messages::monero::MoneroAddress> device_trezor::get_address(
+    std::shared_ptr<messages::zedcoin::ZedcoinAddress> device_trezor::get_address(
         const boost::optional<cryptonote::subaddress_index> & subaddress,
         const boost::optional<crypto::hash8> & payment_id,
         bool show_address,
@@ -247,8 +247,8 @@ namespace trezor {
       device_state_initialize_unsafe();
       require_initialized();
 
-      auto req = std::make_shared<messages::monero::MoneroGetAddress>();
-      this->set_msg_addr<messages::monero::MoneroGetAddress>(req.get(), path, network_type);
+      auto req = std::make_shared<messages::zedcoin::ZedcoinGetAddress>();
+      this->set_msg_addr<messages::zedcoin::ZedcoinGetAddress>(req.get(), path, network_type);
       req->set_show_display(show_address);
       if (subaddress){
         req->set_account(subaddress->major);
@@ -258,12 +258,12 @@ namespace trezor {
         req->set_payment_id(std::string(payment_id->data, 8));
       }
 
-      auto response = this->client_exchange<messages::monero::MoneroAddress>(req);
+      auto response = this->client_exchange<messages::zedcoin::ZedcoinAddress>(req);
       MTRACE("Get address response received");
       return response;
     }
 
-    std::shared_ptr<messages::monero::MoneroWatchKey> device_trezor::get_view_key(
+    std::shared_ptr<messages::zedcoin::ZedcoinWatchKey> device_trezor::get_view_key(
         const boost::optional<std::vector<uint32_t>> & path,
         const boost::optional<cryptonote::network_type> & network_type){
       TREZOR_AUTO_LOCK_CMD();
@@ -271,10 +271,10 @@ namespace trezor {
       device_state_initialize_unsafe();
       require_initialized();
 
-      auto req = std::make_shared<messages::monero::MoneroGetWatchKey>();
-      this->set_msg_addr<messages::monero::MoneroGetWatchKey>(req.get(), path, network_type);
+      auto req = std::make_shared<messages::zedcoin::ZedcoinGetWatchKey>();
+      this->set_msg_addr<messages::zedcoin::ZedcoinGetWatchKey>(req.get(), path, network_type);
 
-      auto response = this->client_exchange<messages::monero::MoneroWatchKey>(req);
+      auto response = this->client_exchange<messages::zedcoin::ZedcoinWatchKey>(req);
       MTRACE("Get watch key response received");
       return response;
     }
@@ -301,9 +301,9 @@ namespace trezor {
       require_initialized();
 
       auto req = protocol::tx::get_tx_key(tx_aux_data);
-      this->set_msg_addr<messages::monero::MoneroGetTxKeyRequest>(req.get());
+      this->set_msg_addr<messages::zedcoin::ZedcoinGetTxKeyRequest>(req.get());
 
-      auto response = this->client_exchange<messages::monero::MoneroGetTxKeyAck>(req);
+      auto response = this->client_exchange<messages::zedcoin::ZedcoinGetTxKeyAck>(req);
       MTRACE("Get TX key response received");
 
       protocol::tx::get_tx_key_ack(tx_keys, tx_aux_data.tx_prefix_hash, view_key_priv, response);
@@ -320,21 +320,21 @@ namespace trezor {
       device_state_initialize_unsafe();
       require_initialized();
 
-      std::shared_ptr<messages::monero::MoneroKeyImageExportInitRequest> req;
+      std::shared_ptr<messages::zedcoin::ZedcoinKeyImageExportInitRequest> req;
 
-      std::vector<protocol::ki::MoneroTransferDetails> mtds;
-      std::vector<protocol::ki::MoneroExportedKeyImage> kis;
+      std::vector<protocol::ki::ZedcoinTransferDetails> mtds;
+      std::vector<protocol::ki::ZedcoinExportedKeyImage> kis;
       protocol::ki::key_image_data(wallet, transfers, mtds);
       protocol::ki::generate_commitment(mtds, transfers, req);
 
       EVENT_PROGRESS(0.);
-      this->set_msg_addr<messages::monero::MoneroKeyImageExportInitRequest>(req.get());
-      auto ack1 = this->client_exchange<messages::monero::MoneroKeyImageExportInitAck>(req);
+      this->set_msg_addr<messages::zedcoin::ZedcoinKeyImageExportInitRequest>(req.get());
+      auto ack1 = this->client_exchange<messages::zedcoin::ZedcoinKeyImageExportInitAck>(req);
 
       const auto batch_size = 10;
       const auto num_batches = (mtds.size() + batch_size - 1) / batch_size;
       for(uint64_t cur = 0; cur < num_batches; ++cur){
-        auto step_req = std::make_shared<messages::monero::MoneroKeyImageSyncStepRequest>();
+        auto step_req = std::make_shared<messages::zedcoin::ZedcoinKeyImageSyncStepRequest>();
         auto idx_finish = std::min(static_cast<uint64_t>((cur + 1) * batch_size), static_cast<uint64_t>(mtds.size()));
         for(uint64_t idx = cur * batch_size; idx < idx_finish; ++idx){
           auto added_tdis = step_req->add_tdis();
@@ -342,7 +342,7 @@ namespace trezor {
           *added_tdis = mtds[idx];
         }
 
-        auto step_ack = this->client_exchange<messages::monero::MoneroKeyImageSyncStepAck>(step_req);
+        auto step_ack = this->client_exchange<messages::zedcoin::ZedcoinKeyImageSyncStepAck>(step_req);
         auto kis_size = step_ack->kis_size();
         kis.reserve(static_cast<size_t>(kis_size));
         for(int i = 0; i < kis_size; ++i){
@@ -355,8 +355,8 @@ namespace trezor {
       }
       EVENT_PROGRESS(1.);
 
-      auto final_req = std::make_shared<messages::monero::MoneroKeyImageSyncFinalRequest>();
-      auto final_ack = this->client_exchange<messages::monero::MoneroKeyImageSyncFinalAck>(final_req);
+      auto final_req = std::make_shared<messages::zedcoin::ZedcoinKeyImageSyncFinalRequest>();
+      auto final_ack = this->client_exchange<messages::zedcoin::ZedcoinKeyImageSyncFinalAck>(final_req);
       ski.reserve(kis.size());
 
       for(auto & sub : kis){
@@ -412,9 +412,9 @@ namespace trezor {
       device_state_initialize_unsafe();
       require_initialized();
 
-      auto req = std::make_shared<messages::monero::MoneroLiveRefreshStartRequest>();
-      this->set_msg_addr<messages::monero::MoneroLiveRefreshStartRequest>(req.get());
-      this->client_exchange<messages::monero::MoneroLiveRefreshStartAck>(req);
+      auto req = std::make_shared<messages::zedcoin::ZedcoinLiveRefreshStartRequest>();
+      this->set_msg_addr<messages::zedcoin::ZedcoinLiveRefreshStartRequest>(req.get());
+      this->client_exchange<messages::zedcoin::ZedcoinLiveRefreshStartAck>(req);
       m_live_refresh_in_progress = true;
       m_last_live_refresh_time = std::chrono::steady_clock::now();
     }
@@ -439,21 +439,21 @@ namespace trezor {
 
       m_last_live_refresh_time = std::chrono::steady_clock::now();
 
-      auto req = std::make_shared<messages::monero::MoneroLiveRefreshStepRequest>();
+      auto req = std::make_shared<messages::zedcoin::ZedcoinLiveRefreshStepRequest>();
       req->set_out_key(out_key.data, 32);
       req->set_recv_deriv(recv_derivation.data, 32);
       req->set_real_out_idx(real_output_index);
       req->set_sub_addr_major(received_index.major);
       req->set_sub_addr_minor(received_index.minor);
 
-      auto ack = this->client_exchange<messages::monero::MoneroLiveRefreshStepAck>(req);
+      auto ack = this->client_exchange<messages::zedcoin::ZedcoinLiveRefreshStepAck>(req);
       protocol::ki::live_refresh_ack(view_key_priv, out_key, ack, in_ephemeral, ki);
     }
 
     void device_trezor::live_refresh_finish_unsafe()
     {
-      auto req = std::make_shared<messages::monero::MoneroLiveRefreshFinalRequest>();
-      this->client_exchange<messages::monero::MoneroLiveRefreshFinalAck>(req);
+      auto req = std::make_shared<messages::zedcoin::ZedcoinLiveRefreshFinalRequest>();
+      this->client_exchange<messages::zedcoin::ZedcoinLiveRefreshFinalAck>(req);
       m_live_refresh_in_progress = false;
     }
 
@@ -511,7 +511,7 @@ namespace trezor {
                                 tools::wallet2::signed_tx_set & signed_tx,
                                 hw::tx_aux_data & aux_data)
     {
-      CHECK_AND_ASSERT_THROW_MES(std::get<0>(unsigned_tx.transfers) == 0, "Unsupported non zero offset");
+      CHECK_AND_ASSERT_THROW_MES(std::get<0>(unsigned_tx.transfers) == 0, "Unsuported non zero offset");
 
       TREZOR_AUTO_LOCK_CMD();
       require_connected();
@@ -623,13 +623,13 @@ namespace trezor {
       transaction_pre_check(init_msg);
       EVENT_PROGRESS(1, 1, 1);
 
-      auto response = this->client_exchange<messages::monero::MoneroTransactionInitAck>(init_msg);
+      auto response = this->client_exchange<messages::zedcoin::ZedcoinTransactionInitAck>(init_msg);
       signer->step_init_ack(response);
 
       // Step: Set transaction inputs
       for(size_t cur_src = 0; cur_src < num_sources; ++cur_src){
         auto src = signer->step_set_input(cur_src);
-        auto ack = this->client_exchange<messages::monero::MoneroTransactionSetInputAck>(src);
+        auto ack = this->client_exchange<messages::zedcoin::ZedcoinTransactionSetInputAck>(src);
         signer->step_set_input_ack(ack);
         EVENT_PROGRESS(2, cur_src, num_sources);
       }
@@ -641,27 +641,27 @@ namespace trezor {
       // Step: input_vini
       for(size_t cur_src = 0; cur_src < num_sources; ++cur_src){
         auto src = signer->step_set_vini_input(cur_src);
-        auto ack = this->client_exchange<messages::monero::MoneroTransactionInputViniAck>(src);
+        auto ack = this->client_exchange<messages::zedcoin::ZedcoinTransactionInputViniAck>(src);
         signer->step_set_vini_input_ack(ack);
         EVENT_PROGRESS(4, cur_src, num_sources);
       }
 
       // Step: all inputs set
       auto all_inputs_set = signer->step_all_inputs_set();
-      auto ack_all_inputs = this->client_exchange<messages::monero::MoneroTransactionAllInputsSetAck>(all_inputs_set);
+      auto ack_all_inputs = this->client_exchange<messages::zedcoin::ZedcoinTransactionAllInputsSetAck>(all_inputs_set);
       signer->step_all_inputs_set_ack(ack_all_inputs);
       EVENT_PROGRESS(5, 1, 1);
 
       // Step: outputs
       for(size_t cur_dst = 0; cur_dst < num_outputs; ++cur_dst){
         auto src = signer->step_set_output(cur_dst);
-        auto ack = this->client_exchange<messages::monero::MoneroTransactionSetOutputAck>(src);
+        auto ack = this->client_exchange<messages::zedcoin::ZedcoinTransactionSetOutputAck>(src);
         signer->step_set_output_ack(ack);
 
         // If BP is offloaded to host, another step with computed BP may be needed.
         auto offloaded_bp = signer->step_rsig(cur_dst);
         if (offloaded_bp){
-          auto bp_ack = this->client_exchange<messages::monero::MoneroTransactionSetOutputAck>(offloaded_bp);
+          auto bp_ack = this->client_exchange<messages::zedcoin::ZedcoinTransactionSetOutputAck>(offloaded_bp);
           signer->step_set_rsig_ack(ack);
         }
 
@@ -670,21 +670,21 @@ namespace trezor {
 
       // Step: all outs set
       auto all_out_set = signer->step_all_outs_set();
-      auto ack_all_out_set = this->client_exchange<messages::monero::MoneroTransactionAllOutSetAck>(all_out_set);
+      auto ack_all_out_set = this->client_exchange<messages::zedcoin::ZedcoinTransactionAllOutSetAck>(all_out_set);
       signer->step_all_outs_set_ack(ack_all_out_set, *this);
       EVENT_PROGRESS(7, 1, 1);
 
       // Step: sign each input
       for(size_t cur_src = 0; cur_src < num_sources; ++cur_src){
         auto src = signer->step_sign_input(cur_src);
-        auto ack_sign = this->client_exchange<messages::monero::MoneroTransactionSignInputAck>(src);
+        auto ack_sign = this->client_exchange<messages::zedcoin::ZedcoinTransactionSignInputAck>(src);
         signer->step_sign_input_ack(ack_sign);
         EVENT_PROGRESS(8, cur_src, num_sources);
       }
 
       // Step: final
       auto final_msg = signer->step_final();
-      auto ack_final = this->client_exchange<messages::monero::MoneroTransactionFinalAck>(final_msg);
+      auto ack_final = this->client_exchange<messages::zedcoin::ZedcoinTransactionFinalAck>(final_msg);
       signer->step_final_ack(ack_final);
       EVENT_PROGRESS(9, 1, 1);
 #undef EVENT_PROGRESS
@@ -693,11 +693,14 @@ namespace trezor {
     unsigned device_trezor::client_version()
     {
       auto trezor_version = get_version();
-      if (trezor_version < pack_version(2, 5, 2)){
-        throw exc::TrezorException("Minimal Trezor firmware version is 2.5.2. Please update.");
+      if (trezor_version < pack_version(2, 4, 3)){
+        throw exc::TrezorException("Minimal Trezor firmware version is 2.4.3. Please update.");
       }
 
-      unsigned client_version = 4;  // since 2.5.2
+      unsigned client_version = 3;
+      if (trezor_version >= pack_version(2, 5, 2)){
+        client_version = 4;
+      }
 
 #ifdef WITH_TREZOR_DEBUGGING
       // Override client version for tests
@@ -705,7 +708,7 @@ namespace trezor {
       if ((env_trezor_client_version = getenv("TREZOR_CLIENT_VERSION")) != nullptr){
         auto succ = epee::string_tools::get_xtype_from_string(client_version, env_trezor_client_version);
         if (succ){
-          MINFO("Trezor client version overridden by TREZOR_CLIENT_VERSION to: " << client_version);
+          MINFO("Trezor client version overriden by TREZOR_CLIENT_VERSION to: " << client_version);
         }
       }
 #endif
@@ -727,7 +730,7 @@ namespace trezor {
       aux_data.client_version = cversion;
     }
 
-    void device_trezor::transaction_pre_check(std::shared_ptr<messages::monero::MoneroTransactionInitRequest> init_msg)
+    void device_trezor::transaction_pre_check(std::shared_ptr<messages::zedcoin::ZedcoinTransactionInitRequest> init_msg)
     {
       CHECK_AND_ASSERT_THROW_MES(init_msg, "TransactionInitRequest is empty");
       CHECK_AND_ASSERT_THROW_MES(init_msg->has_tsx_data(), "TransactionInitRequest has no transaction data");

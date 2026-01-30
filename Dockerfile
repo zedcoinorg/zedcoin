@@ -1,17 +1,23 @@
 # Multistage docker build, requires docker 17.05
 
 # builder stage
-FROM ubuntu:20.04 AS builder
+FROM ubuntu:20.04 as builder
 
 RUN set -ex && \
     apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get --no-install-recommends --yes install \
+        automake \
+        autotools-dev \
+        bsdmainutils \
         build-essential \
         ca-certificates \
+        ccache \
         cmake \
         curl \
         git \
-        pkg-config
+        libtool \
+        pkg-config \
+        gperf
 
 WORKDIR /src
 COPY . .

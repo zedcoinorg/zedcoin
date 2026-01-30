@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 //
 // All rights reserved.
 //
@@ -39,9 +39,8 @@
 #include <boost/thread/thread.hpp>
 #include <boost/thread/condition_variable.hpp>
 
-class WalletApiAccessorTest;
 
-namespace Monero {
+namespace Zedcoin {
 class TransactionHistoryImpl;
 class PendingTransactionImpl;
 class UnsignedTransactionImpl;
@@ -148,7 +147,6 @@ public:
     std::string getMultisigInfo() const override;
     std::string makeMultisig(const std::vector<std::string>& info, uint32_t threshold) override;
     std::string exchangeMultisigKeys(const std::vector<std::string> &info, const bool force_update_use_with_caution = false) override;
-    std::string getMultisigKeyExchangeBooster(const std::vector<std::string> &info, const uint32_t threshold, const uint32_t num_signers) override;
     bool exportMultisigImages(std::string& images) override;
     size_t importMultisigImages(const std::vector<std::string>& images) override;
     bool hasMultisigPartialKeyImages() const override;
@@ -216,6 +214,8 @@ public:
     virtual bool parse_uri(const std::string &uri, std::string &address, std::string &payment_id, uint64_t &amount, std::string &tx_description, std::string &recipient_name, std::vector<std::string> &unknown_parameters, std::string &error) override;
     virtual std::string make_uri(const std::string &address, const std::string &payment_id, uint64_t amount, const std::string &tx_description, const std::string &recipient_name, std::string &error) const override;
     virtual std::string getDefaultDataDir() const override;
+    virtual bool lightWalletLogin(bool &isNewWallet) const override;
+    virtual bool lightWalletImportWalletRequest(std::string &payment_id, uint64_t &fee, bool &new_request, bool &request_fulfilled, std::string &payment_address, std::string &status) override;
     virtual bool blackballOutputs(const std::vector<std::string> &outputs, bool add) override;
     virtual bool blackballOutput(const std::string &amount, const std::string &offset) override;
     virtual bool unblackballOutput(const std::string &amount, const std::string &offset) override;
@@ -256,16 +256,15 @@ private:
     friend class AddressBookImpl;
     friend class SubaddressImpl;
     friend class SubaddressAccountImpl;
-    friend class ::WalletApiAccessorTest;
 
     std::unique_ptr<tools::wallet2> m_wallet;
     mutable boost::mutex m_statusMutex;
     mutable int m_status;
     mutable std::string m_errorString;
     // TODO: harden password handling in the wallet API, see relevant discussion
-    // https://github.com/monero-project/monero-gui/issues/1537
+    // https://github.com/zedcoin-project/zedcoin-gui/issues/1537
     // https://github.com/feather-wallet/feather/issues/72#issuecomment-1405602142
-    // https://github.com/monero-project/monero/pull/8619#issuecomment-1632951461
+    // https://github.com/zedcoin-project/zedcoin/pull/8619#issuecomment-1632951461
     std::string m_password;
     std::unique_ptr<TransactionHistoryImpl> m_history;
     std::unique_ptr<Wallet2CallbackImpl> m_wallet2Callback;

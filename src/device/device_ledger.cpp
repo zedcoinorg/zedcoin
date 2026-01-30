@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2024, The Monero Project
+// Copyright (c) 2017-2022, The Zedcoin Project
 // 
 // All rights reserved.
 // 
@@ -34,15 +34,14 @@
 #include "cryptonote_basic/subaddress_index.h"
 #include "cryptonote_core/cryptonote_tx_utils.h"
 
+#include <boost/thread/locks.hpp> 
+#include <boost/thread/lock_guard.hpp>
+
 namespace hw {
 
   namespace ledger {
 
   #ifdef WITH_DEVICE_LEDGER
-
-    namespace {
-        bool apdu_verbose =true;
-    }
 
     #undef MONERO_DEFAULT_LOG_CATEGORY
     #define MONERO_DEFAULT_LOG_CATEGORY "device.ledger"
@@ -319,10 +318,10 @@ namespace hw {
     //automatic lock one more level on device ensuring the current thread is allowed to use it
     #define AUTO_LOCK_CMD() \
       /* lock both mutexes without deadlock*/ \
-      std::lock(device_locker, command_locker); \
+      boost::lock(device_locker, command_locker); \
       /* make sure both already-locked mutexes are unlocked at the end of scope */ \
-      std::lock_guard<std::recursive_mutex> lock1(device_locker, std::adopt_lock); \
-      std::lock_guard<std::mutex> lock2(command_locker, std::adopt_lock)
+      boost::lock_guard<boost::recursive_mutex> lock1(device_locker, boost::adopt_lock); \
+      boost::lock_guard<boost::mutex> lock2(command_locker, boost::adopt_lock)
 
     //lock the device for a long sequence
     void device_ledger::lock(void) {
@@ -466,7 +465,7 @@ namespace hw {
       this->sw = (this->buffer_recv[length_recv]<<8) | this->buffer_recv[length_recv+1];
       logRESP();
       MDEBUG("Device "<< this->id << " exchange: sw: " << this->sw << " expected: " << ok);
-      ASSERT_X(sw != SW_CLIENT_NOT_SUPPORTED, "Monero Ledger App doesn't support current monero version. Try to update the Monero Ledger App, at least " << MINIMAL_APP_VERSION_MAJOR<< "." << MINIMAL_APP_VERSION_MINOR << "." << MINIMAL_APP_VERSION_MICRO << " is required.");
+      ASSERT_X(sw != SW_CLIENT_NOT_SUPPORTED, "Zedcoin Ledger App doesn't support current zedcoin version. Try to update the Zedcoin Ledger App, at least " << MINIMAL_APP_VERSION_MAJOR<< "." << MINIMAL_APP_VERSION_MINOR << "." << MINIMAL_APP_VERSION_MICRO << " is required.");
       ASSERT_X(sw != SW_PROTOCOL_NOT_SUPPORTED, "Make sure no other program is communicating with the Ledger.");
       ASSERT_SW(this->sw,ok,mask);
 

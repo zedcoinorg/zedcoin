@@ -39,7 +39,7 @@
 #define MONERO_DEFAULT_LOG_CATEGORY "default"
 
 #define MAX_LOG_FILE_SIZE 104850000 // 100 MB - 7600 bytes
-#define MAX_LOG_FILES 10
+#define MAX_LOG_FILES 50
 
 #define LOG_TO_STRING(x) \
     std::stringstream ss; \

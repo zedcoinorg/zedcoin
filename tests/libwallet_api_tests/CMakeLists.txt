@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2024, The Monero Project
+# Copyright (c) 2014-2022, The Zedcoin Project
 #
 # All rights reserved.
 #
@@ -33,7 +33,7 @@ set(libwallet_api_tests_sources
 set(libwallet_api_tests_headers
   )
 
-monero_add_minimal_executable(libwallet_api_tests
+zedcoin_add_minimal_executable(libwallet_api_tests
   ${libwallet_api_tests_sources}
   ${libwallet_api_tests_headers})
 
@@ -60,10 +60,12 @@ set_property(TARGET libwallet_api_tests
   PROPERTY
     FOLDER "tests")
 
-set_property(TARGET libwallet_api_tests
-  APPEND_STRING
-  PROPERTY
-    COMPILE_FLAGS " -Wno-undef -Wno-sign-compare")
+if (NOT MSVC)
+  set_property(TARGET libwallet_api_tests
+    APPEND_STRING
+    PROPERTY
+      COMPILE_FLAGS " -Wno-undef -Wno-sign-compare")
+endif ()
 
 add_test(
   NAME    libwallet_api_tests

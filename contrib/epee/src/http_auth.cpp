@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 //
 // All rights reserved.
 //
@@ -93,7 +93,7 @@ namespace
 
   constexpr const auto client_auth_field = ceref(u8"Authorization");
   constexpr const auto server_auth_field = ceref(u8"WWW-authenticate");
-  constexpr const auto auth_realm = ceref(u8"monero-rpc");
+  constexpr const auto auth_realm = ceref(u8"zedcoin-rpc");
   constexpr const char comma = 44;
   constexpr const char equal_sign = 61;
   constexpr const char quote = 34;
@@ -217,13 +217,15 @@ namespace
   //// Digest Authentication
 
   template<typename Digest>
-  auto generate_a1(Digest digest, const http::login& creds, const boost::string_ref realm)
+  typename std::result_of<Digest()>::type generate_a1(
+    Digest digest, const http::login& creds, const boost::string_ref realm)
   {
     return digest(creds.username, u8":", realm, u8":", creds.password);
   }
 
   template<typename Digest>
-  auto generate_a1(Digest digest, const http::http_client_auth::session& user)
+  typename std::result_of<Digest()>::type generate_a1(
+    Digest digest, const http::http_client_auth::session& user)
   {
     return generate_a1(std::move(digest), user.credentials, user.server.realm);
   }

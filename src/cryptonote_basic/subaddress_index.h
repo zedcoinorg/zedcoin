@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2024, The Monero Project
+// Copyright (c) 2017-2022, The Zedcoin Project
 // 
 // All rights reserved.
 // 
@@ -28,7 +28,6 @@
 
 #pragma once
 
-#include "serialization/serialization.h"
 #include "serialization/keyvalue_serialization.h"
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/version.hpp>

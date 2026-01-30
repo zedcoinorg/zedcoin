@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2024, The Monero Project
+// Copyright (c) 2017-2022, The Zedcoin Project
 // 
 // All rights reserved.
 // 
@@ -29,8 +29,6 @@
 #pragma once 
 
 #include <string>
-#include <memory>
-#include <functional>
 
 namespace tools
 {

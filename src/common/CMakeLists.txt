@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2024, The Monero Project
+# Copyright (c) 2014-2022, The Zedcoin Project
 #
 # All rights reserved.
 #
@@ -52,13 +52,17 @@ if (STACK_TRACE)
   list(APPEND common_sources stack_trace.cpp)
 endif()
 
+if (BACKCOMPAT)
+  list(APPEND common_sources compat/glibc_compat.cpp)
+endif()
+
 set(common_headers)
 
-monero_find_all_headers(common_private_headers "${CMAKE_CURRENT_SOURCE_DIR}")
+zedcoin_find_all_headers(common_private_headers "${CMAKE_CURRENT_SOURCE_DIR}")
 
-monero_private_headers(common
+zedcoin_private_headers(common
   ${common_private_headers})
-monero_add_library(common
+zedcoin_add_library(common
   ${common_sources}
   ${common_headers}
   ${common_private_headers}
@@ -77,9 +81,6 @@ target_link_libraries(common
   PRIVATE
     ${OPENSSL_LIBRARIES}
     ${EXTRA_LIBRARIES})
-target_include_directories(common
-  PRIVATE
-    ${Boost_INCLUDE_DIRS})
 
-#monero_install_headers(common
+#zedcoin_install_headers(common
 #  ${common_headers})

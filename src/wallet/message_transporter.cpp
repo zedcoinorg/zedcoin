@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2024, The Monero Project
+// Copyright (c) 2018-2022, The Zedcoin Project
 
 //
 // All rights reserved.
@@ -61,7 +61,7 @@ namespace bitmessage_rpc
       KV_SERIALIZE(toAddress)
       KV_SERIALIZE(read)
       KV_SERIALIZE(msgid)
-      KV_SERIALIZE(message)
+      KV_SERIALIZE(message);
       KV_SERIALIZE(fromAddress)
       KV_SERIALIZE(receivedTime)
       KV_SERIALIZE(subject)
@@ -105,7 +105,7 @@ bool message_transporter::receive_messages(const std::vector<std::string> &desti
 {
   // The message body of the Bitmessage message is basically the transport message, as JSON (and nothing more).
   // Weeding out other, non-MMS messages is done in a simple way: If it deserializes without error, it's an MMS message
-  // That JSON is Base64-encoded by the MMS because the Monero epee JSON serializer does not escape anything and happily
+  // That JSON is Base64-encoded by the MMS because the Zedcoin epee JSON serializer does not escape anything and happily
   // includes even 0 (NUL) in strings, which might confuse Bitmessage or at least display confusingly in the client.
   // There is yet another Base64-encoding of course as part of the Bitmessage API for the message body parameter
   // The Bitmessage API call "getAllInboxMessages" gives back a JSON array with all the messages (despite using
@@ -273,28 +273,15 @@ bool message_transporter::post_request(const std::string &request, std::string &
   {
     if ((string_value.find("API Error 0021") == 0) && (request.find("joinChan") != std::string::npos))
     {
-      // "API Error 0021: Unexpected API Failure"
       // Error that occurs if one tries to join an already joined chan, which can happen
       // if several auto-config participants share one PyBitmessage instance: As a little
       // hack simply ignore the error. (A clean solution would be to check for the chan
       // with 'listAddresses2', but parsing the returned array is much more complicated.)
     }
-    else if ((string_value.find("API Error 0024") == 0) && (request.find("joinChan") != std::string::npos))
-    {
-      // "API Error 0024: Chan address is already present."
-      // Maybe a result of creating the chan in a slightly different way i.e. not with
-      // 'createChan'; everything works by just ignoring this error
-    }
     else if ((string_value.find("API Error 0013") == 0) && (request.find("leaveChan") != std::string::npos))
     {
-      // "API Error 0013: Could not find your fromAddress in the keys.dat file."
       // Error that occurs if one tries to leave an already left / deleted chan, which can happen
       // if several auto-config participants share one PyBitmessage instance: Also ignore.
-    }
-    else if ((string_value.find("API Error 0025") == 0) && (request.find("leaveChan") != std::string::npos))
-    {
-      // "API Error 0025: Specified address is not a chan address. Use deleteAddress API call instead."
-      // Error does not really make sense, but everything works by just ignoring
     }
     else
     {

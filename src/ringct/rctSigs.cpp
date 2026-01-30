@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2024, Monero Research Labs
+// Copyright (c) 2016, Zedcoin Research Labs
 //
 // Author: Shen Noether <shen.noether@gmx.com>
 // 
@@ -28,18 +28,16 @@
 // STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#include "rctSigs.h"
-
 #include "misc_log_ex.h"
 #include "misc_language.h"
 #include "common/perf_timer.h"
 #include "common/threadpool.h"
 #include "common/util.h"
+#include "rctSigs.h"
 #include "bulletproofs.h"
 #include "bulletproofs_plus.h"
+#include "cryptonote_basic/cryptonote_format_utils.h"
 #include "cryptonote_config.h"
-#include "device/device.hpp"
-#include "serialization/crypto.h"
 
 using namespace crypto;
 using namespace std;
@@ -614,8 +612,7 @@ namespace rct {
       key prehash;
       CHECK_AND_ASSERT_THROW_MES(const_cast<rctSig&>(rv).serialize_rctsig_base(ba, inputs, outputs),
           "Failed to serialize rctSigBase");
-      const std::string sig_base_blob = ss.str();
-      cn_fast_hash(sig_base_blob.data(), sig_base_blob.size(), h);
+      cryptonote::get_blob_hash(ss.str(), h);
       hashes.push_back(hash2rct(h));
 
       keyV kv;
@@ -1169,8 +1166,9 @@ namespace rct {
         if (bulletproof_or_plus)
         {
             const bool plus = is_rct_bulletproof_plus(rv.type);
-            CHECK_AND_ASSERT_THROW_MES(rct_config.range_proof_type == rct::RangeProofPaddedBulletproof,
-                "Unsupported range proof type: " << rct_config.range_proof_type);
+            size_t n_amounts = outamounts.size();
+            size_t amounts_proved = 0;
+            if (rct_config.range_proof_type == RangeProofPaddedBulletproof)
             {
                 rct::keyV C, masks;
                 if (hwdev.get_mode() == hw::device::TRANSACTION_CREATE_FAKE)
@@ -1200,6 +1198,45 @@ namespace rct {
                     rv.outPk[i].mask = rct::scalarmult8(C[i]);
                     outSk[i].mask = masks[i];
                 }
+            }
+            else while (amounts_proved < n_amounts)
+            {
+                size_t batch_size = 1;
+                if (rct_config.range_proof_type == RangeProofMultiOutputBulletproof)
+                  while (batch_size * 2 + amounts_proved <= n_amounts && batch_size * 2 <= (plus ? BULLETPROOF_PLUS_MAX_OUTPUTS : BULLETPROOF_MAX_OUTPUTS))
+                    batch_size *= 2;
+                rct::keyV C, masks;
+                std::vector<uint64_t> batch_amounts(batch_size);
+                for (i = 0; i < batch_size; ++i)
+                  batch_amounts[i] = outamounts[i + amounts_proved];
+                if (hwdev.get_mode() == hw::device::TRANSACTION_CREATE_FAKE)
+                {
+                    // use a fake bulletproof for speed
+                    if (plus)
+                      rv.p.bulletproofs_plus.push_back(make_dummy_bulletproof_plus(batch_amounts, C, masks));
+                    else
+                      rv.p.bulletproofs.push_back(make_dummy_bulletproof(batch_amounts, C, masks));
+                }
+                else
+                {
+                    const epee::span<const key> keys{&amount_keys[amounts_proved], batch_size};
+                    if (plus)
+                      rv.p.bulletproofs_plus.push_back(proveRangeBulletproofPlus(C, masks, batch_amounts, keys, hwdev));
+                    else
+                      rv.p.bulletproofs.push_back(proveRangeBulletproof(C, masks, batch_amounts, keys, hwdev));
+                #ifdef DBG
+                    if (plus)
+                      CHECK_AND_ASSERT_THROW_MES(verBulletproofPlus(rv.p.bulletproofs_plus.back()), "verBulletproofPlus failed on newly created proof");
+                    else
+                      CHECK_AND_ASSERT_THROW_MES(verBulletproof(rv.p.bulletproofs.back()), "verBulletproof failed on newly created proof");
+                #endif
+                }
+                for (i = 0; i < batch_size; ++i)
+                {
+                  rv.outPk[i + amounts_proved].mask = rct::scalarmult8(C[i]);
+                  outSk[i + amounts_proved].mask = masks[i];
+                }
+                amounts_proved += batch_size;
             }
         }
 

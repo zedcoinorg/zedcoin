@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2024, Monero Research Labs
+// Copyright (c) 2016, Zedcoin Research Labs
 //
 // Author: Shen Noether <shen.noether@gmx.com>
 //
@@ -30,6 +30,7 @@
 
 #include <boost/lexical_cast.hpp>
 #include "misc_log_ex.h"
+#include "cryptonote_basic/cryptonote_format_utils.h"
 #include "rctOps.h"
 using namespace crypto;
 using namespace std;
@@ -670,7 +671,7 @@ namespace rct {
 
     //Elliptic Curve Diffie Helman: encodes and decodes the amount b and mask a
     // where C= aG + bH
-    key genAmountEncodingFactor(const key &k)
+    static key ecdhHash(const key &k)
     {
         char data[38];
         rct::key hash;
@@ -699,7 +700,7 @@ namespace rct {
         if (v2)
         {
           unmasked.mask = zero();
-          xor8(unmasked.amount, genAmountEncodingFactor(sharedSec));
+          xor8(unmasked.amount, ecdhHash(sharedSec));
         }
         else
         {
@@ -714,7 +715,7 @@ namespace rct {
         if (v2)
         {
           masked.mask = genCommitmentMask(sharedSec);
-          xor8(masked.amount, genAmountEncodingFactor(sharedSec));
+          xor8(masked.amount, ecdhHash(sharedSec));
         }
         else
         {

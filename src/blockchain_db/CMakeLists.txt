@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2024, The Monero Project
+# Copyright (c) 2014-2022, The Zedcoin Project
 #
 # All rights reserved.
 #
@@ -33,11 +33,11 @@ set(blockchain_db_sources
 
 set(blockchain_db_headers)
 
-monero_find_all_headers(blockchain_db_private_headers "${CMAKE_CURRENT_SOURCE_DIR}")
+zedcoin_find_all_headers(blockchain_db_private_headers "${CMAKE_CURRENT_SOURCE_DIR}")
 
-monero_private_headers(blockchain_db
+zedcoin_private_headers(blockchain_db
   ${crypto_private_headers})
-monero_add_library(blockchain_db
+zedcoin_add_library(blockchain_db
   ${blockchain_db_sources}
   ${blockchain_db_headers}
   ${blockchain_db_private_headers})
@@ -45,8 +45,7 @@ target_link_libraries(blockchain_db
   PUBLIC
     common
     cncrypto
-    cryptonote_basic
-    ringct_basic
+    ringct
     ${LMDB_LIBRARY}
     ${Boost_FILESYSTEM_LIBRARY}
     ${Boost_THREAD_LIBRARY}

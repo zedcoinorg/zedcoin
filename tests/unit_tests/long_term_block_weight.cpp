@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2024, The Monero Project
+// Copyright (c) 2019-2022, The Zedcoin Project
 // 
 // All rights reserved.
 // 
@@ -106,9 +106,16 @@ static uint32_t lcg()
 
 }
 
+struct BlockchainAndPool
+{
+  cryptonote::tx_memory_pool txpool;
+  cryptonote::Blockchain bc;
+  BlockchainAndPool(): txpool(bc), bc(txpool) {}
+};
+
 #define PREFIX_WINDOW(hf_version,window) \
-  cryptonote::BlockchainAndPool bap; \
-  cryptonote::Blockchain *bc = &bap.blockchain; \
+  BlockchainAndPool bap; \
+  cryptonote::Blockchain *bc = &bap.bc; \
   struct get_test_options { \
     const std::pair<uint8_t, uint64_t> hard_forks[3]; \
     const cryptonote::test_options test_options = { \

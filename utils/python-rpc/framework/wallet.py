@@ -1,4 +1,4 @@
-# Copyright (c) 2018-2024, The Monero Project
+# Copyright (c) 2018-2022, The Monero Project
 
 # 
 # All rights reserved.
@@ -33,11 +33,10 @@ from .rpc import JSONRPC
 
 class Wallet(object):
 
-    def __init__(self, protocol='http', host='127.0.0.1', port=0, idx=0, username=None, password=None):
+    def __init__(self, protocol='http', host='127.0.0.1', port=0, idx=0):
         self.host = host
         self.port = port
-        self.rpc = JSONRPC('{protocol}://{host}:{port}'.format(protocol=protocol, host=host,
-            port=port if port else 18090+idx), username, password)
+        self.rpc = JSONRPC('{protocol}://{host}:{port}'.format(protocol=protocol, host=host, port=port if port else 18090+idx))
 
     def transfer(self, destinations, account_index = 0, subaddr_indices = [], priority = 0, ring_size = 0, unlock_time = 0, payment_id = '', get_tx_key = True, do_not_relay = False, get_tx_hex = False, get_tx_metadata = False, subtract_fee_from_outputs = []):
         transfer = {
@@ -552,20 +551,6 @@ class Wallet(object):
             'id': '0'
         }
         return self.rpc.send_json_rpc_request(exchange_multisig_keys)
-
-    def get_multisig_key_exchange_booster(self, multisig_info, threshold, num_signers, password = ''):
-        exchange_multisig_keys = {
-            'method': 'get_multisig_key_exchange_booster',
-            'params' : {
-                'multisig_info': multisig_info,
-                'threshold': threshold,
-                'num_signers': num_signers,
-                'password': password,
-            },
-            'jsonrpc': '2.0', 
-            'id': '0'
-        }
-        return self.rpc.send_json_rpc_request(get_multisig_key_exchange_booster)
 
     def export_multisig_info(self):
         export_multisig_info = {

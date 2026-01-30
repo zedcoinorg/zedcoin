@@ -1,4 +1,4 @@
-// Copyright (c) 2023-2024, The Monero Project
+// Copyright (c) 2023, The Zedcoin Project
 //
 // All rights reserved.
 //
@@ -28,7 +28,6 @@
 
 #include <boost/iterator/transform_iterator.hpp>
 
-#include "common/threadpool.h"
 #include "cryptonote_core/blockchain.h"
 #include "cryptonote_core/cryptonote_core.h"
 #include "cryptonote_core/tx_verification_utils.h"
@@ -36,7 +35,7 @@
 #include "ringct/rctSigs.h"
 
 #undef MONERO_DEFAULT_LOG_CATEGORY
-#define MONERO_DEFAULT_LOG_CATEGORY "verify"
+#define MONERO_DEFAULT_LOG_CATEGORY "blockchain"
 
 #define VER_ASSERT(cond, msgexpr) CHECK_AND_ASSERT_MES(cond, false, msgexpr)
 
@@ -84,147 +83,31 @@ static bool expand_tx_and_ver_rct_non_sem(transaction& tx, const rct::ctkeyM& mi
     }
 
     // Mix ring data is now known to be correctly incorporated into the RCT sig inside tx.
-    VER_ASSERT(rct::verRctNonSemanticsSimple(rv), "Failed to verify simple RingCT signatures");
-    return true;
+    return rct::verRctNonSemanticsSimple(rv);
 }
 
-// Same as expand_tx_and_ver_rct_non_sem(), but for RingCT sigs of type RCTTypeFull only
-static bool expand_tx_and_ver_full_rct_non_sem(transaction& tx, const rct::ctkeyM& mix_ring)
+// Create a unique identifier for pair of tx blob + mix ring
+static crypto::hash calc_tx_mixring_hash(const transaction& tx, const rct::ctkeyM& mix_ring)
 {
-    // Pruned transactions can not be expanded and verified because they are missing RCT data
-    VER_ASSERT(!tx.pruned, "Pruned transaction will not pass verRctNonSemanticsSimple");
-    VER_ASSERT(tx.rct_signatures.type == rct::RCTTypeFull,
-        "Non-full (simple) RingCT transaction will not pass rct::verRct");
+    std::stringstream ss;
 
-    // Calculate prefix hash
-    const crypto::hash tx_prefix_hash = get_transaction_prefix_hash(tx);
+    // Start with domain seperation
+    ss << config::HASH_KEY_TXHASH_AND_MIXRING;
 
-    // Expand mixring, tx inputs, tx key images, prefix hash message, etc into the RCT sig
-    const bool exp_res = Blockchain::expand_transaction_2(tx, tx_prefix_hash, mix_ring);
-    VER_ASSERT(exp_res, "Failed to expand rct signatures!");
+    // Then add TX hash
+    const crypto::hash tx_hash = get_transaction_hash(tx);
+    ss.write(tx_hash.data, sizeof(crypto::hash));
 
-    const rct::rctSig& rv = tx.rct_signatures;
+    // Then serialize mix ring
+    binary_archive<true> ar(ss);
+    ::do_serialize(ar, const_cast<rct::ctkeyM&>(mix_ring));
 
-    // check all this, either reconstructed (so should really pass), or not
-    bool size_matches = true;
-    for (size_t i = 0; i < mix_ring.size(); ++i)
-        size_matches &= mix_ring[i].size() == rv.mixRing.size();
-    for (size_t i = 0; i < rv.mixRing.size(); ++i)
-        size_matches &= mix_ring.size() == rv.mixRing[i].size();
-    if (!size_matches)
-    {
-        MERROR("Failed to check ringct signatures: mismatched pubkeys/mixRing size");
-        return false;
-    }
+    // Calculate hash of TX hash and mix ring blob
+    crypto::hash tx_and_mixring_hash;
+    get_blob_hash(ss.str(), tx_and_mixring_hash);
 
-    for (size_t n = 0; n < mix_ring.size(); ++n)
-    {
-        for (size_t m = 0; m < mix_ring[n].size(); ++m)
-        {
-            if (mix_ring[n][m].dest != rct::rct2pk(rv.mixRing[m][n].dest))
-            {
-                MERROR("Failed to check ringct signatures: mismatched pubkey at vin " << n << ", index " << m);
-                return false;
-            }
-            if (mix_ring[n][m].mask != rct::rct2pk(rv.mixRing[m][n].mask))
-            {
-                MERROR("Failed to check ringct signatures: mismatched commitment at vin " << n << ", index " << m);
-                return false;
-            }
-        }
-    }
-
-    if (rv.p.MGs.size() != 1)
-    {
-        MERROR("Failed to check ringct signatures: Bad MGs size");
-        return false;
-    }
-    if (rv.p.MGs.empty() || rv.p.MGs[0].II.size() != tx.vin.size())
-    {
-        MERROR("Failed to check ringct signatures: mismatched II/vin sizes");
-        return false;
-    }
-    for (size_t n = 0; n < tx.vin.size(); ++n)
-    {
-        if (memcmp(&boost::get<txin_to_key>(tx.vin[n]).k_image, &rv.p.MGs[0].II[n], 32))
-        {
-            MERROR("Failed to check ringct signatures: mismatched II/vin sizes");
-            return false;
-        }
-    }
-
-    if (!rct::verRct(rv, false))
-    {
-        MERROR("Failed to check ringct signatures!");
-        return false;
-    }
-
-    return true;
+    return tx_and_mixring_hash;
 }
-
-static bool tx_ver_legacy_ring_sigs(transaction& tx, const rct::ctkeyM& mix_ring)
-{
-    VER_ASSERT(!tx.pruned, "Pruned transaction will not pass crypto::check_ring_signature");
-    VER_ASSERT(tx.version == 1, "RingCT transaction will not pass crypto::check_ring_signature");
-
-    VER_ASSERT(tx.signatures.size() == mix_ring.size(), "Wrong number of v1 mix rings");
-
-    // This shape checks should be implied as part of serialization, but we re-check them here anyways
-    VER_ASSERT(tx.signatures.size() == tx.vin.size(), "Wrong number of v1 ring signatures");
-
-    // Calculate prefix hash
-    const crypto::hash tx_prefix_hash = get_transaction_prefix_hash(tx);
-
-    // Define job to run one call of crypto::check_ring_signature()
-    std::atomic_flag fail_occurred{};
-    const auto check_ring_signature_job = [&fail_occurred, &tx, &mix_ring, &tx_prefix_hash](const std::size_t input_idx)
-    {
-        const txin_to_key *pin = boost::get<txin_to_key>(&tx.vin[input_idx]);
-        if (pin == nullptr || pin->key_offsets.size() != tx.signatures[input_idx].size())
-        {
-            MERROR("Transaction input is wrong type or ring member count mismatch");
-            fail_occurred.test_and_set();
-            return;
-        }
-
-        std::vector<const crypto::public_key *> p_output_keys;
-        p_output_keys.reserve(mix_ring.at(input_idx).size());
-        for (const rct::ctkey &key : mix_ring.at(input_idx))
-        {
-            // rct::key and crypto::public_key have the same structure, avoid object ctor/memcpy
-            p_output_keys.push_back(reinterpret_cast<const crypto::public_key*>(&key.dest));
-        }
-
-        const bool ver = crypto::check_ring_signature(tx_prefix_hash,
-            pin->k_image,
-            p_output_keys,
-            tx.signatures.at(input_idx).data());
-        if (!ver)
-        {
-            MERROR("Failed to check ring signature for tx " << get_transaction_hash(tx) << "  vin key with k_image: "
-                << pin->k_image << "  sig_index: " << input_idx);
-            fail_occurred.test_and_set();
-        }
-    };
-
-    // Multi-thread calls to check_ring_signature_job() for each input if available, else iterate on ths thread
-    tools::threadpool& tpool = tools::threadpool::getInstanceForCompute();
-    const int threads = tpool.get_max_concurrency();
-    const bool multi_threaded = threads > 1;
-    std::unique_ptr<tools::threadpool::waiter> waiter(multi_threaded ? new tools::threadpool::waiter(tpool) : nullptr);
-    for (std::size_t input_idx = 0; input_idx < tx.signatures.size(); ++input_idx)
-    {
-        if (waiter)
-            tpool.submit(waiter.get(), [&, input_idx](){ check_ring_signature_job(input_idx); }, true);
-        else
-            check_ring_signature_job(input_idx);
-    }
-    if (waiter && !waiter->wait())
-        return false;
-
-    return !fail_occurred.test_and_set(); // test_and_set() returns previously held value
-}
-
 
 static bool is_canonical_bulletproof_layout(const std::vector<rct::Bulletproof> &proofs)
 {
@@ -324,9 +207,15 @@ uint64_t get_transaction_weight_limit(const uint8_t hf_version)
         return get_min_block_weight(hf_version) - CRYPTONOTE_COINBASE_BLOB_RESERVED_SIZE;
 }
 
-bool ver_input_proofs_rings(transaction& tx, const rct::ctkeyM &dereferenced_mix_ring)
+bool ver_rct_non_semantics_simple_cached
+(
+    transaction& tx,
+    const rct::ctkeyM& mix_ring,
+    rct_ver_cache_t& cache,
+    const std::uint8_t rct_type_to_cache
+)
 {
-    // Hello future Monero dev! If you got this assert, read the following carefully:
+    // Hello future Zedcoin dev! If you got this assert, read the following carefully:
     //
     // For this version of RCT, the way we guaranteed that verification caches do not generate false
     // positives (and thus possibly enabling double spends) is we take a hash of two things. One,
@@ -334,61 +223,42 @@ bool ver_input_proofs_rings(transaction& tx, const rct::ctkeyM &dereferenced_mix
     // representation of all "knobs" controlled by the possibly malicious constructor of the
     // transaction. Two, we take a hash of all *previously validated* blockchain data referenced by
     // this transaction which is required to validate the ring signature. In our case, this is the
-    // mix_ring. Future versions of the protocol may differ in this regard, but if this assumptions
+    // mixring. Future versions of the protocol may differ in this regard, but if this assumptions
     // holds true in the future, enable the verification hash by modifying the `untested_tx`
     // condition below.
     const bool untested_tx = tx.version > 2 || tx.rct_signatures.type > rct::RCTTypeBulletproofPlus;
     VER_ASSERT(!untested_tx, "Unknown TX type. Make sure RCT cache works correctly with this type and then enable it in the code here.");
 
-    if (tx.version == 1)
+    // Don't cache older (or newer) rctSig types
+    // This cache only makes sense when it caches data from mempool first,
+    // so only "current fork version-enabled" RCT types need to be cached
+    if (tx.rct_signatures.type != rct_type_to_cache)
     {
-        return tx_ver_legacy_ring_sigs(tx, dereferenced_mix_ring);
+        MDEBUG("RCT cache: tx " << get_transaction_hash(tx) << " skipped");
+        return expand_tx_and_ver_rct_non_sem(tx, mix_ring);
     }
-    else if (tx.version == 2)
+
+    // Generate unique hash for tx+mix_ring pair
+    const crypto::hash tx_mixring_hash = calc_tx_mixring_hash(tx, mix_ring);
+
+    // Search cache for successful verification of same TX + mix ring combination
+    if (cache.has(tx_mixring_hash))
     {
-        switch (tx.rct_signatures.type)
-        {
-        case rct::RCTTypeNull:
-            MERROR("Null RingCT does not have input proofs to verify");
-            return false;
-        case rct::RCTTypeFull:
-            return expand_tx_and_ver_full_rct_non_sem(tx, dereferenced_mix_ring);
-        case rct::RCTTypeSimple:
-        case rct::RCTTypeBulletproof:
-        case rct::RCTTypeBulletproof2:
-        case rct::RCTTypeCLSAG:
-        case rct::RCTTypeBulletproofPlus:
-            return expand_tx_and_ver_rct_non_sem(tx, dereferenced_mix_ring);
-        default:
-            MERROR("Unrecognized RingCT type: " << tx.rct_signatures.type);
-            return false;
-        }
+        MDEBUG("RCT cache: tx " << get_transaction_hash(tx) << " hit");
+        return true;
     }
-    else
+
+    // We had a cache miss, so now we must expand the mix ring and do full verification
+    MDEBUG("RCT cache: tx " << get_transaction_hash(tx) << " missed");
+    if (!expand_tx_and_ver_rct_non_sem(tx, mix_ring))
     {
-        MERROR("Unrecognized transaction version: " << tx.version);
         return false;
     }
-}
 
-crypto::hash make_input_verification_id(const crypto::hash &tx_hash, const rct::ctkeyM &dereferenced_mix_ring)
-{
-    std::stringstream ss;
+    // At this point, the TX RCT verified successfully, so add it to the cache and return true
+    cache.add(tx_mixring_hash);
 
-    // Start with domain seperation
-    ss << config::HASH_KEY_TXHASH_AND_MIXRING;
-
-    // Then add TX hash
-    ss.write(tx_hash.data, sizeof(crypto::hash));
-
-    // Then serialize mix ring
-    binary_archive<true> ar(ss);
-    ::do_serialize(ar, const_cast<rct::ctkeyM&>(dereferenced_mix_ring));
-
-    // Calculate hash of TX hash and mix ring blob
-    crypto::hash input_verification_id;
-    get_blob_hash(ss.str(), input_verification_id);
-    return input_verification_id;
+    return true;
 }
 
 bool ver_mixed_rct_semantics(std::vector<const rct::rctSig*> rvv)

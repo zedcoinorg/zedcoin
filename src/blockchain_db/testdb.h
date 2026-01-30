@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 // 
 // All rights reserved.
 // 
@@ -34,8 +34,6 @@
 #include <vector>
 #include <map>
 
-#include <cryptonote_basic/cryptonote_format_utils.h>
-
 #include "blockchain_db.h"
 
 namespace cryptonote
@@ -52,6 +50,8 @@ public:
   virtual std::vector<std::string> get_filenames() const override { return std::vector<std::string>(); }
   virtual bool remove_data_file(const std::string& folder) const override { return true; }
   virtual std::string get_db_name() const override { return std::string(); }
+  virtual bool lock() override { return true; }
+  virtual void unlock() override { }
   virtual bool batch_start(uint64_t batch_num_blocks=0, uint64_t batch_bytes=0) override { return true; }
   virtual void batch_stop() override {}
   virtual void batch_abort() override {}
@@ -70,8 +70,7 @@ public:
   virtual bool get_tx_blob(const crypto::hash& h, cryptonote::blobdata &tx) const override { return false; }
   virtual bool get_pruned_tx_blob(const crypto::hash& h, cryptonote::blobdata &tx) const override { return false; }
   virtual bool get_pruned_tx_blobs_from(const crypto::hash& h, size_t count, std::vector<cryptonote::blobdata> &bd) const override { return false; }
-  virtual bool get_blocks_from(uint64_t start_height, size_t min_block_count, size_t max_block_count, size_t max_tx_count, size_t max_size, std::vector<std::pair<std::pair<cryptonote::blobdata, crypto::hash>, std::vector<std::pair<crypto::hash, cryptonote::blobdata>>>>& blocks, bool pruned, bool get_miner_tx_hash) const override { return false; }
-  virtual std::vector<crypto::hash> get_txids_loose(const crypto::hash& h, std::uint32_t bits, uint64_t max_num_txs = 0) override { return {}; }
+  virtual bool get_blocks_from(uint64_t start_height, size_t min_block_count, size_t max_block_count, size_t max_tx_count, size_t max_size, std::vector<std::pair<std::pair<cryptonote::blobdata, crypto::hash>, std::vector<std::pair<crypto::hash, cryptonote::blobdata>>>>& blocks, bool pruned, bool skip_coinbase, bool get_miner_tx_hash) const override { return false; }
   virtual bool get_prunable_tx_blob(const crypto::hash& h, cryptonote::blobdata &tx) const override { return false; }
   virtual bool get_prunable_tx_hash(const crypto::hash& tx_hash, crypto::hash &prunable_hash) const override { return false; }
   virtual uint64_t get_block_height(const crypto::hash& h) const override { return 0; }
@@ -112,7 +111,7 @@ public:
   virtual std::vector<std::vector<uint64_t>> get_tx_amount_output_indices(const uint64_t tx_index, size_t n_txes) const override { return std::vector<std::vector<uint64_t>>(); }
   virtual bool has_key_image(const crypto::key_image& img) const override { return false; }
   virtual void remove_block() override { }
-  virtual uint64_t add_transaction_data(const crypto::hash& blk_hash, const cryptonote::transaction& tx, epee::span<const std::uint8_t> blob, const crypto::hash& tx_hash, const crypto::hash& tx_prunable_hash) override {return 0;}
+  virtual uint64_t add_transaction_data(const crypto::hash& blk_hash, const std::pair<cryptonote::transaction, cryptonote::blobdata_ref>& tx, const crypto::hash& tx_hash, const crypto::hash& tx_prunable_hash) override {return 0;}
   virtual void remove_transaction_data(const crypto::hash& tx_hash, const cryptonote::transaction& tx) override {}
   virtual uint64_t add_output(const crypto::hash& tx_hash, const cryptonote::tx_out& tx_output, const uint64_t& local_index, const uint64_t unlock_time, const rct::key *commitment) override {return 0;}
   virtual void add_tx_amount_output_indices(const uint64_t tx_index, const std::vector<uint64_t>& amount_output_indices) override {}

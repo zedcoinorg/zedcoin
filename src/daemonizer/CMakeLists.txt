@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2024, The Monero Project
+# Copyright (c) 2014-2022, The Zedcoin Project
 #
 # All rights reserved.
 #
@@ -26,7 +26,7 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-if(MINGW)
+if(MSVC OR MINGW)
   set(daemonizer_sources
     windows_service.cpp
     windows_daemonizer.inl
@@ -41,7 +41,7 @@ endif()
 set(daemonizer_headers
 )
 
-if(MINGW)
+if(MSVC OR MINGW)
   set(daemonizer_private_headers
     daemonizer.h
     windows_service.h
@@ -58,15 +58,16 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   add_definitions(-DDEBUG_TMPDIR_LOG=1)
 endif()
 
-monero_private_headers(daemonizer
+zedcoin_private_headers(daemonizer
   ${daemonizer_private_headers})
-monero_add_library(daemonizer
+zedcoin_add_library(daemonizer
   ${daemonizer_sources}
   ${daemonizer_headers}
   ${daemonizer_private_headers})
 target_link_libraries(daemonizer
   PUBLIC
     common
+    ${Boost_CHRONO_LIBRARY}
     ${Boost_FILESYSTEM_LIBRARY}
     ${Boost_PROGRAM_OPTIONS_LIBRARY}
   PRIVATE

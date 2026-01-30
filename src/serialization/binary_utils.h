@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 // 
 // All rights reserved.
 // 
@@ -31,7 +31,6 @@
 #pragma once
 
 #include <sstream>
-#include "serialization/serialization.h"
 #include "binary_archive.h"
 
 namespace serialization {

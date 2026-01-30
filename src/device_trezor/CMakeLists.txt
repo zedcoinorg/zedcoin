@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2024, The Monero Project
+# Copyright (c) 2014-2022, The Zedcoin Project
 #
 # All rights reserved.
 #
@@ -65,22 +65,18 @@ set(trezor_private_headers)
 
 # Protobuf and LibUSB processed by CheckTrezor
 if(DEVICE_TREZOR_READY)
-    message(STATUS "Trezor: support enabled")
+    message(STATUS "Trezor support enabled")
 
     if(USE_DEVICE_TREZOR_DEBUG)
         list(APPEND trezor_headers trezor/debug_link.hpp trezor/messages/messages-debug.pb.h)
         list(APPEND trezor_sources trezor/debug_link.cpp trezor/messages/messages-debug.pb.cc)
-        message(STATUS "Trezor: debugging enabled")
+        message(STATUS "Trezor debugging enabled")
     endif()
 
-    if(ANDROID)
-        set(TREZOR_EXTRA_LIBRARIES "log")
-    endif()
-
-    monero_private_headers(device_trezor
+    zedcoin_private_headers(device_trezor
             ${device_private_headers})
 
-    monero_add_library(device_trezor
+    zedcoin_add_library(device_trezor
             ${trezor_sources}
             ${trezor_headers}
             ${trezor_private_headers})
@@ -92,17 +88,16 @@ if(DEVICE_TREZOR_READY)
             ringct_basic
             cryptonote_core
             common
-            ${sodium_LIBRARIES}
+            ${SODIUM_LIBRARY}
             ${Boost_CHRONO_LIBRARY}
             ${Protobuf_LIBRARY}
             ${TREZOR_LIBUSB_LIBRARIES}
             PRIVATE
-            ${EXTRA_LIBRARIES}
-            ${TREZOR_EXTRA_LIBRARIES})
+            ${EXTRA_LIBRARIES})
 
 else()
-    message(STATUS "Trezor: support disabled")
-    monero_private_headers(device_trezor)
-    monero_add_library(device_trezor device_trezor.cpp)
+    message(STATUS "Trezor support disabled")
+    zedcoin_private_headers(device_trezor)
+    zedcoin_add_library(device_trezor device_trezor.cpp)
     target_link_libraries(device_trezor PUBLIC cncrypto)
 endif()

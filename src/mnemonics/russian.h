@@ -1,6 +1,6 @@
-// Word list created by Monero contributor sammy007
+// Word list created by Zedcoin contributor sammy007
 // 
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 // 
 // All rights reserved.
 // 

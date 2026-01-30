@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2024, The Monero Project
+// Copyright (c) 2018-2022, The Zedcoin Project
 
 // 
 // All rights reserved.
@@ -28,9 +28,6 @@
 // THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #pragma once 
-
-#include <string>
-#include <vector>
 
 namespace tools
 {

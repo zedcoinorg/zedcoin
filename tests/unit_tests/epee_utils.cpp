@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 //
 // All rights reserved.
 //
@@ -1242,22 +1242,6 @@ TEST(ToHex, ArrayFromPod)
   );
 }
 
-TEST(ToHex, Buffer)
-{
-  static constexpr const std::uint8_t source[] = {0xFF, 0x00, 0xAB, 0x01};
-  const std::vector<char> expected{'f', 'f', '0', '0', 'a', 'b', '0', '1'};
-
-  std::vector<char> buffer;
-  buffer.resize(expected.size());
-  EXPECT_TRUE(epee::to_hex::buffer(epee::to_mut_span(buffer), source));
-  EXPECT_EQ(expected, buffer);
-
-  buffer.pop_back();
-  EXPECT_FALSE(epee::to_hex::buffer(epee::to_mut_span(buffer), source));
-  buffer.pop_back();
-  EXPECT_FALSE(epee::to_hex::buffer(epee::to_mut_span(buffer), source));
-}
-
 TEST(ToHex, Ostream)
 {
   std::stringstream out;
@@ -1432,7 +1416,7 @@ TEST(StringTools, GetIpInt32)
   The existing epee conversion function does not work with 255.255.255.255, for
   the reasons specified in the inet_addr documentation. Consider fixing in a
   future patch. This address is not likely to be used for purposes within
-  monero.
+  zedcoin.
   EXPECT_TRUE(epee::string_tools::get_ip_int32_from_string(ip, "255.255.255.255"));
   EXPECT_EQ(htonl(0xffffffff), ip);
 */
@@ -1455,8 +1439,8 @@ TEST(StringTools, GetExtension)
 TEST(StringTools, CutOffExtension)
 {
   EXPECT_EQ(std::string{}, epee::string_tools::cut_off_extension(""));
-  EXPECT_EQ(std::string{"/home/user/Monero/wallets/wallet"}, epee::string_tools::cut_off_extension("/home/user/Monero/wallets/wallet"));
-  EXPECT_EQ(std::string{"/home/user/Monero/wallets/wallet"}, epee::string_tools::cut_off_extension("/home/user/Monero/wallets/wallet.keys"));
+  EXPECT_EQ(std::string{"/home/user/Zedcoin/wallets/wallet"}, epee::string_tools::cut_off_extension("/home/user/Zedcoin/wallets/wallet"));
+  EXPECT_EQ(std::string{"/home/user/Zedcoin/wallets/wallet"}, epee::string_tools::cut_off_extension("/home/user/Zedcoin/wallets/wallet.keys"));
 }
 
 TEST(NetUtils, IPv4NetworkAddress)

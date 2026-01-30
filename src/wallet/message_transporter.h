@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2024, The Monero Project
+// Copyright (c) 2018-2022, The Zedcoin Project
 
 //
 // All rights reserved.
@@ -30,6 +30,8 @@
 #pragma once
 #include "serialization/keyvalue_serialization.h"
 #include "cryptonote_basic/cryptonote_basic.h"
+#include "cryptonote_basic/cryptonote_boost_serialization.h"
+#include "cryptonote_basic/account_boost_serialization.h"
 #include "net/http_server_impl_base.h"
 #include "net/http_client.h"
 #include "net/abstract_http_client.h"
@@ -42,9 +44,9 @@ namespace mms
 
 struct transport_message_t
 {
-  cryptonote::account_public_address source_monero_address;
+  cryptonote::account_public_address source_zedcoin_address;
   std::string source_transport_address;
-  cryptonote::account_public_address destination_monero_address;
+  cryptonote::account_public_address destination_zedcoin_address;
   std::string destination_transport_address;
   crypto::chacha_iv iv;
   crypto::public_key encryption_public_key;
@@ -59,9 +61,9 @@ struct transport_message_t
   std::string transport_id;
 
   BEGIN_KV_SERIALIZE_MAP()
-    KV_SERIALIZE(source_monero_address)
+    KV_SERIALIZE(source_zedcoin_address)
     KV_SERIALIZE(source_transport_address)
-    KV_SERIALIZE(destination_monero_address)
+    KV_SERIALIZE(destination_zedcoin_address)
     KV_SERIALIZE(destination_transport_address)
     KV_SERIALIZE_VAL_POD_AS_BLOB(iv)
     KV_SERIALIZE_VAL_POD_AS_BLOB(encryption_public_key)

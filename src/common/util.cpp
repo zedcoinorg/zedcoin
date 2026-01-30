@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 // 
 // All rights reserved.
 // 
@@ -78,6 +78,7 @@ using namespace epee;
   #include <strsafe.h>
 #else 
   #include <sys/file.h>
+  #include <sys/utsname.h>
   #include <sys/stat.h>
 #endif
 #include <boost/filesystem.hpp>
@@ -336,6 +337,277 @@ namespace tools
 #endif
   }
 
+#ifdef WIN32
+  std::string get_windows_version_display_string()
+  {
+    typedef void (WINAPI *PGNSI)(LPSYSTEM_INFO);
+    typedef BOOL (WINAPI *PGPI)(DWORD, DWORD, DWORD, DWORD, PDWORD);
+#define BUFSIZE 10000
+
+    char pszOS[BUFSIZE] = {0};
+    OSVERSIONINFOEX osvi;
+    SYSTEM_INFO si;
+    PGNSI pGNSI;
+    PGPI pGPI;
+    BOOL bOsVersionInfoEx;
+    DWORD dwType;
+
+    ZeroMemory(&si, sizeof(SYSTEM_INFO));
+    ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
+
+    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+    bOsVersionInfoEx = GetVersionEx((OSVERSIONINFO*) &osvi);
+
+    if(!bOsVersionInfoEx) return pszOS;
+
+    // Call GetNativeSystemInfo if supported or GetSystemInfo otherwise.
+
+    pGNSI = (PGNSI) GetProcAddress(
+      GetModuleHandle(TEXT("kernel32.dll")), 
+      "GetNativeSystemInfo");
+    if(NULL != pGNSI)
+      pGNSI(&si);
+    else GetSystemInfo(&si);
+
+    if ( VER_PLATFORM_WIN32_NT==osvi.dwPlatformId && 
+      osvi.dwMajorVersion > 4 )
+    {
+      StringCchCopy(pszOS, BUFSIZE, TEXT("Microsoft "));
+
+      // Test for the specific product.
+      if ( osvi.dwMajorVersion == 10 )
+      {
+        if ( osvi.dwMinorVersion == 0 )
+        {
+          if( osvi.wProductType == VER_NT_WORKSTATION )
+            StringCchCat(pszOS, BUFSIZE, TEXT("Windows 10 "));
+          else StringCchCat(pszOS, BUFSIZE, TEXT("Windows Server 2016 " ));
+        }
+      }
+
+      if ( osvi.dwMajorVersion == 6 )
+      {
+        if ( osvi.dwMinorVersion == 0 )
+        {
+          if( osvi.wProductType == VER_NT_WORKSTATION )
+            StringCchCat(pszOS, BUFSIZE, TEXT("Windows Vista "));
+          else StringCchCat(pszOS, BUFSIZE, TEXT("Windows Server 2008 " ));
+        }
+
+        if ( osvi.dwMinorVersion == 1 )
+        {
+          if( osvi.wProductType == VER_NT_WORKSTATION )
+            StringCchCat(pszOS, BUFSIZE, TEXT("Windows 7 "));
+          else StringCchCat(pszOS, BUFSIZE, TEXT("Windows Server 2008 R2 " ));
+        }
+
+        if ( osvi.dwMinorVersion == 2 )
+        {
+          if( osvi.wProductType == VER_NT_WORKSTATION )
+            StringCchCat(pszOS, BUFSIZE, TEXT("Windows 8 "));
+          else StringCchCat(pszOS, BUFSIZE, TEXT("Windows Server 2012 " ));
+        }
+
+        if ( osvi.dwMinorVersion == 3 )
+        {
+          if( osvi.wProductType == VER_NT_WORKSTATION )
+            StringCchCat(pszOS, BUFSIZE, TEXT("Windows 8.1 "));
+          else StringCchCat(pszOS, BUFSIZE, TEXT("Windows Server 2012 R2 " ));
+        }
+
+        pGPI = (PGPI) GetProcAddress(
+          GetModuleHandle(TEXT("kernel32.dll")), 
+          "GetProductInfo");
+
+        pGPI( osvi.dwMajorVersion, osvi.dwMinorVersion, 0, 0, &dwType);
+
+        switch( dwType )
+        {
+        case PRODUCT_ULTIMATE:
+          StringCchCat(pszOS, BUFSIZE, TEXT("Ultimate Edition" ));
+          break;
+        case PRODUCT_PROFESSIONAL:
+          StringCchCat(pszOS, BUFSIZE, TEXT("Professional" ));
+          break;
+        case PRODUCT_HOME_PREMIUM:
+          StringCchCat(pszOS, BUFSIZE, TEXT("Home Premium Edition" ));
+          break;
+        case PRODUCT_HOME_BASIC:
+          StringCchCat(pszOS, BUFSIZE, TEXT("Home Basic Edition" ));
+          break;
+        case PRODUCT_ENTERPRISE:
+          StringCchCat(pszOS, BUFSIZE, TEXT("Enterprise Edition" ));
+          break;
+        case PRODUCT_BUSINESS:
+          StringCchCat(pszOS, BUFSIZE, TEXT("Business Edition" ));
+          break;
+        case PRODUCT_STARTER:
+          StringCchCat(pszOS, BUFSIZE, TEXT("Starter Edition" ));
+          break;
+        case PRODUCT_CLUSTER_SERVER:
+          StringCchCat(pszOS, BUFSIZE, TEXT("Cluster Server Edition" ));
+          break;
+        case PRODUCT_DATACENTER_SERVER:
+          StringCchCat(pszOS, BUFSIZE, TEXT("Datacenter Edition" ));
+          break;
+        case PRODUCT_DATACENTER_SERVER_CORE:
+          StringCchCat(pszOS, BUFSIZE, TEXT("Datacenter Edition (core installation)" ));
+          break;
+        case PRODUCT_ENTERPRISE_SERVER:
+          StringCchCat(pszOS, BUFSIZE, TEXT("Enterprise Edition" ));
+          break;
+        case PRODUCT_ENTERPRISE_SERVER_CORE:
+          StringCchCat(pszOS, BUFSIZE, TEXT("Enterprise Edition (core installation)" ));
+          break;
+        case PRODUCT_ENTERPRISE_SERVER_IA64:
+          StringCchCat(pszOS, BUFSIZE, TEXT("Enterprise Edition for Itanium-based Systems" ));
+          break;
+        case PRODUCT_SMALLBUSINESS_SERVER:
+          StringCchCat(pszOS, BUFSIZE, TEXT("Small Business Server" ));
+          break;
+        case PRODUCT_SMALLBUSINESS_SERVER_PREMIUM:
+          StringCchCat(pszOS, BUFSIZE, TEXT("Small Business Server Premium Edition" ));
+          break;
+        case PRODUCT_STANDARD_SERVER:
+          StringCchCat(pszOS, BUFSIZE, TEXT("Standard Edition" ));
+          break;
+        case PRODUCT_STANDARD_SERVER_CORE:
+          StringCchCat(pszOS, BUFSIZE, TEXT("Standard Edition (core installation)" ));
+          break;
+        case PRODUCT_WEB_SERVER:
+          StringCchCat(pszOS, BUFSIZE, TEXT("Web Server Edition" ));
+          break;
+        }
+      }
+
+      if ( osvi.dwMajorVersion == 5 && osvi.dwMinorVersion == 2 )
+      {
+        if( GetSystemMetrics(SM_SERVERR2) )
+          StringCchCat(pszOS, BUFSIZE, TEXT( "Windows Server 2003 R2, "));
+        else if ( osvi.wSuiteMask & VER_SUITE_STORAGE_SERVER )
+          StringCchCat(pszOS, BUFSIZE, TEXT( "Windows Storage Server 2003"));
+        else if ( osvi.wSuiteMask & VER_SUITE_WH_SERVER )
+          StringCchCat(pszOS, BUFSIZE, TEXT( "Windows Home Server"));
+        else if( osvi.wProductType == VER_NT_WORKSTATION &&
+          si.wProcessorArchitecture==PROCESSOR_ARCHITECTURE_AMD64)
+        {
+          StringCchCat(pszOS, BUFSIZE, TEXT( "Windows XP Professional x64 Edition"));
+        }
+        else StringCchCat(pszOS, BUFSIZE, TEXT("Windows Server 2003, "));
+
+        // Test for the server type.
+        if ( osvi.wProductType != VER_NT_WORKSTATION )
+        {
+          if ( si.wProcessorArchitecture==PROCESSOR_ARCHITECTURE_IA64 )
+          {
+            if( osvi.wSuiteMask & VER_SUITE_DATACENTER )
+              StringCchCat(pszOS, BUFSIZE, TEXT( "Datacenter Edition for Itanium-based Systems" ));
+            else if( osvi.wSuiteMask & VER_SUITE_ENTERPRISE )
+              StringCchCat(pszOS, BUFSIZE, TEXT( "Enterprise Edition for Itanium-based Systems" ));
+          }
+
+          else if ( si.wProcessorArchitecture==PROCESSOR_ARCHITECTURE_AMD64 )
+          {
+            if( osvi.wSuiteMask & VER_SUITE_DATACENTER )
+              StringCchCat(pszOS, BUFSIZE, TEXT( "Datacenter x64 Edition" ));
+            else if( osvi.wSuiteMask & VER_SUITE_ENTERPRISE )
+              StringCchCat(pszOS, BUFSIZE, TEXT( "Enterprise x64 Edition" ));
+            else StringCchCat(pszOS, BUFSIZE, TEXT( "Standard x64 Edition" ));
+          }
+
+          else
+          {
+            if ( osvi.wSuiteMask & VER_SUITE_COMPUTE_SERVER )
+              StringCchCat(pszOS, BUFSIZE, TEXT( "Compute Cluster Edition" ));
+            else if( osvi.wSuiteMask & VER_SUITE_DATACENTER )
+              StringCchCat(pszOS, BUFSIZE, TEXT( "Datacenter Edition" ));
+            else if( osvi.wSuiteMask & VER_SUITE_ENTERPRISE )
+              StringCchCat(pszOS, BUFSIZE, TEXT( "Enterprise Edition" ));
+            else if ( osvi.wSuiteMask & VER_SUITE_BLADE )
+              StringCchCat(pszOS, BUFSIZE, TEXT( "Web Edition" ));
+            else StringCchCat(pszOS, BUFSIZE, TEXT( "Standard Edition" ));
+          }
+        }
+      }
+
+      if ( osvi.dwMajorVersion == 5 && osvi.dwMinorVersion == 1 )
+      {
+        StringCchCat(pszOS, BUFSIZE, TEXT("Windows XP "));
+        if( osvi.wSuiteMask & VER_SUITE_PERSONAL )
+          StringCchCat(pszOS, BUFSIZE, TEXT( "Home Edition" ));
+        else StringCchCat(pszOS, BUFSIZE, TEXT( "Professional" ));
+      }
+
+      if ( osvi.dwMajorVersion == 5 && osvi.dwMinorVersion == 0 )
+      {
+        StringCchCat(pszOS, BUFSIZE, TEXT("Windows 2000 "));
+
+        if ( osvi.wProductType == VER_NT_WORKSTATION )
+        {
+          StringCchCat(pszOS, BUFSIZE, TEXT( "Professional" ));
+        }
+        else 
+        {
+          if( osvi.wSuiteMask & VER_SUITE_DATACENTER )
+            StringCchCat(pszOS, BUFSIZE, TEXT( "Datacenter Server" ));
+          else if( osvi.wSuiteMask & VER_SUITE_ENTERPRISE )
+            StringCchCat(pszOS, BUFSIZE, TEXT( "Advanced Server" ));
+          else StringCchCat(pszOS, BUFSIZE, TEXT( "Server" ));
+        }
+      }
+
+      // Include service pack (if any) and build number.
+
+      if( strlen(osvi.szCSDVersion) > 0 )
+      {
+        StringCchCat(pszOS, BUFSIZE, TEXT(" ") );
+        StringCchCat(pszOS, BUFSIZE, osvi.szCSDVersion);
+      }
+
+      TCHAR buf[80];
+
+      StringCchPrintf( buf, 80, TEXT(" (build %d)"), osvi.dwBuildNumber);
+      StringCchCat(pszOS, BUFSIZE, buf);
+
+      if ( osvi.dwMajorVersion >= 6 )
+      {
+        if ( si.wProcessorArchitecture==PROCESSOR_ARCHITECTURE_AMD64 )
+          StringCchCat(pszOS, BUFSIZE, TEXT( ", 64-bit" ));
+        else if (si.wProcessorArchitecture==PROCESSOR_ARCHITECTURE_INTEL )
+          StringCchCat(pszOS, BUFSIZE, TEXT(", 32-bit"));
+      }
+
+      return pszOS; 
+    }
+    else
+    {  
+      printf( "This sample does not support this version of Windows.\n");
+      return pszOS;
+    }
+  }
+#else
+std::string get_nix_version_display_string()
+{
+  struct utsname un;
+
+  if(uname(&un) < 0)
+    return std::string("*nix: failed to get os version");
+  return std::string() + un.sysname + " " + un.version + " " + un.release;
+}
+#endif
+
+
+
+  std::string get_os_version_string()
+  {
+#ifdef WIN32
+    return get_windows_version_display_string();
+#else
+    return get_nix_version_display_string();
+#endif
+  }
+
+
 
 #ifdef WIN32
   std::string get_special_folder_path(int nfolder, bool iscreate)
@@ -439,10 +711,10 @@ namespace tools
   {
     ub_ctx *ctx = ub_ctx_create();
     if (!ctx) return false; // cheat a bit, should not happen unless OOM
-    char *monero = strdup("monero"), *unbound = strdup("unbound");
-    ub_ctx_zone_add(ctx, monero, unbound); // this calls ub_ctx_finalize first, then errors out with UB_SYNTAX
+    char *zedcoin = strdup("zedcoin"), *unbound = strdup("unbound");
+    ub_ctx_zone_add(ctx, zedcoin, unbound); // this calls ub_ctx_finalize first, then errors out with UB_SYNTAX
     free(unbound);
-    free(monero);
+    free(zedcoin);
     // if no threads, bails out early with UB_NOERROR, otherwise fails with UB_AFTERFINAL id already finalized
     bool with_threads = ub_ctx_async(ctx, 1) != 0; // UB_AFTERFINAL is not defined in public headers, check any error
     ub_ctx_delete(ctx);
@@ -825,7 +1097,7 @@ namespace tools
     time_t tt = ts;
     struct tm tm;
     misc_utils::get_gmt_time(tt, tm);
-    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%SZ", &tm);
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &tm);
     return std::string(buffer);
   }
 
@@ -866,7 +1138,7 @@ namespace tools
   std::string get_human_readable_bytes(uint64_t bytes)
   {
     // Use 1024 for "kilo", 1024*1024 for "mega" and so on instead of the more modern and standard-conforming
-    // 1000, 1000*1000 and so on, to be consistent with other Monero code that also uses base 2 units
+    // 1000, 1000*1000 and so on, to be consistent with other Zedcoin code that also uses base 2 units
     struct byte_map
     {
         const char* const format;
@@ -1067,7 +1339,7 @@ namespace tools
       return num_blocks;
     }
 
-    // The following is a table of average blocks sizes in bytes over the Monero mainnet
+    // The following is a table of average blocks sizes in bytes over the Zedcoin mainnet
     // blockchain, where the block size is averaged over ranges of 10,000 blocks
     // (about 2 weeks worth of blocks each).
     // The first array entry of 442 thus means "The average byte size of the blocks

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (c) 2019-2024, The Monero Project
+# Copyright (c) 2019-2022, The Monero Project
 # 
 # All rights reserved.
 # 
@@ -31,6 +31,7 @@
 """Test cold tx signing
 """
 
+from __future__ import print_function
 from framework.daemon import Daemon
 from framework.wallet import Wallet
 import random
@@ -102,8 +103,10 @@ class ColdSigningTest():
             res = self.hot_wallet.incoming_transfers()
             num_outputs = len(res.transfers)
             done = [False] * num_outputs
-            while len([x for x in done if not x]) > 0:
-                start = random.choice([i for i in range(len(done)) if not done[i]]) # start at a random undone output
+            while len([x for x in done if not done[x]]) > 0:
+                start = int(random.random() * num_outputs)
+                if start == num_outputs:
+                    num_outputs -= 1
                 count = 1 + int(random.random() * 5)
                 res = self.hot_wallet.export_outputs(all = True, start = start, count = count)
 
@@ -122,8 +125,6 @@ class ColdSigningTest():
                     # new outputs first
                     if 'Imported outputs omit more outputs that we know of' not in str(e):
                         raise
-                    else:
-                        continue
                 for i in range(start, start + count):
                     if i < len(done):
                         done[i] = True
@@ -131,31 +132,8 @@ class ColdSigningTest():
             res = self.hot_wallet.export_outputs()
             self.cold_wallet.import_outputs(res.outputs_data_hex)
 
-        # Check consistency between hot & cold transfers list, especially that one-time addresses and amounts line up
-        def check_transfers_list_consistency(do_check_key_images):
-            hot_transfers_list = self.hot_wallet.incoming_transfers()
-            cold_transfers_list = self.cold_wallet.incoming_transfers()
-            if 'transfers' not in hot_transfers_list:
-                assert 'transfers' not in cold_transfers_list
-                return
-            hot_transfers_list = hot_transfers_list['transfers']
-            cold_transfers_list = cold_transfers_list['transfers']
-            assert len(hot_transfers_list) == len(cold_transfers_list)
-            attributes_to_cmp = ['amount', 'subaddr_index', 'pubkey']
-            if do_check_key_images:
-                attributes_to_cmp.append("key_image")
-            for i in range(len(hot_transfers_list)):
-                for attr in attributes_to_cmp:
-                    hot_val = hot_transfers_list[i][attr]
-                    cold_val = cold_transfers_list[i][attr]
-                    assert hot_val == cold_val, "outputs mismatch ({}, \"{}\"): {} vs {}".format(i, attr, hot_val, cold_val)
-
-        check_transfers_list_consistency(False)
-
         res = self.cold_wallet.export_key_images(True)
         self.hot_wallet.import_key_images(res.signed_key_images, offset = res.offset)
-
-        check_transfers_list_consistency(True)
 
     def create_tx(self, destination_addr, piecemeal_output_export):
         daemon = Daemon()

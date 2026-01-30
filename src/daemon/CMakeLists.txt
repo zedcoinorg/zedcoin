@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2024, The Monero Project
+# Copyright (c) 2014-2022, The Zedcoin Project
 #
 # All rights reserved.
 #
@@ -37,11 +37,11 @@ set(daemon_sources
 
 set(daemon_headers)
 
-monero_find_all_headers(daemon_private_headers "${CMAKE_CURRENT_SOURCE_DIR}")
+zedcoin_find_all_headers(daemon_private_headers "${CMAKE_CURRENT_SOURCE_DIR}")
 
-monero_private_headers(daemon
+zedcoin_private_headers(daemon
   ${daemon_private_headers})
-monero_add_executable(daemon
+zedcoin_add_executable(daemon
   ${daemon_sources}
   ${daemon_headers}
   ${daemon_private_headers})
@@ -65,11 +65,11 @@ target_link_libraries(daemon
     ${Boost_REGEX_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
     ${CMAKE_THREAD_LIBS_INIT}
-    PkgConfig::libzmq
+    ${ZMQ_LIB}
     ${GNU_READLINE_LIBRARY}
     ${EXTRA_LIBRARIES}
-    $<TARGET_NAME_IF_EXISTS:blocks>)
+    ${Blocks})
 set_property(TARGET daemon
   PROPERTY
-    OUTPUT_NAME "monerod")
+    OUTPUT_NAME "zedcoind")
 install(TARGETS daemon DESTINATION bin)

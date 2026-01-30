@@ -1,4 +1,4 @@
-// Copyright (c) 2017-2024, The Monero Project
+// Copyright (c) 2017-2022, The Monero Project
 //
 // All rights reserved.
 //
@@ -32,12 +32,13 @@
 
 
 #include <cstddef>
-#include <mutex>
 #include <string>
 #include "device/device.hpp"
 #include "device/device_default.hpp"
 #include "device/device_cold.hpp"
 #include <boost/scope_exit.hpp>
+#include <boost/thread/mutex.hpp>
+#include <boost/thread/recursive_mutex.hpp>
 #include "cryptonote_config.h"
 #include "trezor.hpp"
 
@@ -48,12 +49,12 @@
 //automatic lock one more level on device ensuring the current thread is allowed to use it
 #define TREZOR_AUTO_LOCK_CMD() \
   /* lock both mutexes without deadlock*/ \
-  std::lock(device_locker, command_locker); \
+  boost::lock(device_locker, command_locker); \
   /* make sure both already-locked mutexes are unlocked at the end of scope */ \
-  std::lock_guard<std::recursive_mutex> lock1(device_locker, std::adopt_lock); \
-  std::lock_guard<std::mutex> lock2(command_locker, std::adopt_lock)
+  boost::lock_guard<boost::recursive_mutex> lock1(device_locker, boost::adopt_lock); \
+  boost::lock_guard<boost::mutex> lock2(command_locker, boost::adopt_lock)
 
-#define TREZOR_AUTO_LOCK_DEVICE() std::lock_guard<std::recursive_mutex> lock1_device(device_locker)
+#define TREZOR_AUTO_LOCK_DEVICE() boost::lock_guard<boost::recursive_mutex> lock1_device(device_locker)
 
 namespace hw {
 namespace trezor {
@@ -85,8 +86,8 @@ namespace trezor {
     protected:
 
       // Locker for concurrent access
-      mutable std::recursive_mutex  device_locker;
-      mutable std::mutex  command_locker;
+      mutable boost::recursive_mutex  device_locker;
+      mutable boost::mutex  command_locker;
 
       std::shared_ptr<Transport> m_transport;
       i_device_callback * m_callback;
@@ -99,7 +100,7 @@ namespace trezor {
       boost::optional<epee::wipeable_string> m_passphrase;
       messages::MessageType m_last_msg_type;
 
-      cryptonote::network_type m_network_type;
+      cryptonote::network_type network_type;
       bool m_reply_with_empty_passphrase;
       bool m_always_use_empty_passphrase;
       bool m_seen_passphrase_entry_message;
@@ -226,9 +227,9 @@ namespace trezor {
         }
 
         if (network_type){
-          msg->set_network_type(static_cast<messages::monero::MoneroNetworkType>(network_type.get()));
+          msg->set_network_type(static_cast<uint32_t>(network_type.get()));
         } else {
-          msg->set_network_type(static_cast<messages::monero::MoneroNetworkType>(this->m_network_type));
+          msg->set_network_type(static_cast<uint32_t>(this->network_type));
         }
       }
 
@@ -317,6 +318,7 @@ namespace trezor {
     void on_button_pressed();
     void on_pin_request(GenericMessage & resp, const messages::common::PinMatrixRequest * msg);
     void on_passphrase_request(GenericMessage & resp, const messages::common::PassphraseRequest * msg);
+    void on_passphrase_state_request(GenericMessage & resp, const messages::common::Deprecated_PassphraseStateRequest * msg);
 
 #ifdef WITH_TREZOR_DEBUGGING
     void set_debug(bool debug){

@@ -2,7 +2,7 @@
 /// @author rfree (current maintainer/user in monero.cc project - most of code is from CryptoNote)
 /// @brief This is the original cryptonote protocol network-events handler, modified by us
 
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Monero Project
 //
 // All rights reserved.
 //
@@ -36,13 +36,9 @@
 // developer rfree: this code is caller of our new network code, and is modded; e.g. for rate limiting
 
 #include <boost/optional/optional.hpp>
-#include <boost/uuid/uuid.hpp>
-#include <boost/uuid/uuid_generators.hpp>
 #include <list>
 #include <ctime>
 
-#include <cryptonote_core/cryptonote_core.h>
-#include "cryptonote_protocol/cryptonote_protocol_handler.h"
 #include "cryptonote_basic/cryptonote_format_utils.h"
 #include "profile_tools.h"
 #include "net/network_throttle-detail.hpp"
@@ -381,11 +377,6 @@ namespace cryptonote
       {
         cnx.ip = cnx.host;
         cnx.port = std::to_string(cntxt.m_remote_address.as<epee::net_utils::ipv4_network_address>().port());
-      }
-      else if (cntxt.m_remote_address.get_type_id() == epee::net_utils::ipv6_network_address::get_type_id())
-      {
-        cnx.ip = cnx.host;
-        cnx.port = std::to_string(cntxt.m_remote_address.as<epee::net_utils::ipv6_network_address>().port());
       }
       cnx.rpc_port = cntxt.m_rpc_port;
       cnx.rpc_credits_per_hash = cntxt.m_rpc_credits_per_hash;
@@ -1069,6 +1060,13 @@ namespace cryptonote
     ++m_sync_spans_downloaded;
     m_sync_download_objects_size += size;
     MDEBUG(context << " downloaded " << size << " bytes worth of blocks");
+
+    /*using namespace boost::chrono;
+      auto point = steady_clock::now();
+      auto time_from_epoh = point.time_since_epoch();
+      auto sec = duration_cast< seconds >( time_from_epoh ).count();*/
+
+    //epee::net_utils::network_throttle_manager::get_global_throttle_inreq().logger_handle_net("log/dr-monero/net/req-all.data", sec, get_avg_block_size());
 
     if(arg.blocks.empty())
     {
@@ -2413,7 +2411,7 @@ skip:
         }
       }
       MGINFO_YELLOW(ENDL << "**********************************************************************" << ENDL
-        << "You are now synchronized with the network. You may now start monero-wallet-cli." << ENDL
+        << "You are now synchronized with the network. You may now start zedcoin-wallet-cli." << ENDL
         << ENDL
         << "Use the \"help\" command to see the list of available commands." << ENDL
         << "**********************************************************************");
@@ -2860,7 +2858,7 @@ skip:
       m_core.set_target_blockchain_height(target);
       if (target == 0 && context.m_state > cryptonote_connection_context::state_before_handshake && !m_stopping)
       {
-        MCWARNING("global", "monerod is now disconnected from the network");
+        MCWARNING("global", "zedcoind is now disconnected from the network");
         m_ask_for_txpool_complement = true;
       }
     }
@@ -2877,4 +2875,3 @@ skip:
     m_core.stop();
   }
 } // namespace
-

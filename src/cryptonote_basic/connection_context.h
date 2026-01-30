@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 // 
 // All rights reserved.
 // 
@@ -52,6 +52,7 @@ namespace cryptonote
       state_before_handshake = 0, //default state
       state_synchronizing,
       state_standby,
+      state_idle,
       state_normal
     };
 
@@ -129,6 +130,8 @@ namespace cryptonote
       return "synchronizing";
     case cryptonote_connection_context::state_standby:
       return "standby";
+    case cryptonote_connection_context::state_idle:
+      return "idle";
     case cryptonote_connection_context::state_normal:
       return "normal";
     default:
@@ -146,6 +149,8 @@ namespace cryptonote
       return 's';
     case cryptonote_connection_context::state_standby:
       return 'w';
+    case cryptonote_connection_context::state_idle:
+      return 'i';
     case cryptonote_connection_context::state_normal:
       return 'n';
     default:

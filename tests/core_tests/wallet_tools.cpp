@@ -31,18 +31,10 @@ void wallet_accessor_test::set_account(tools::wallet2 * wallet, cryptonote::acco
 
 void wallet_accessor_test::process_parsed_blocks(tools::wallet2 * wallet, uint64_t start_height, const std::vector<cryptonote::block_complete_entry> &blocks, const std::vector<tools::wallet2::parsed_block> &parsed_blocks, uint64_t& blocks_added)
 {
-  if (wallet != nullptr) {
-    wallet->process_parsed_blocks(start_height, blocks, parsed_blocks, blocks_added);
-  }
+  wallet->process_parsed_blocks(start_height, blocks, parsed_blocks, blocks_added);
 }
 
 void wallet_tools::process_transactions(tools::wallet2 * wallet, const std::vector<test_event_entry>& events, const cryptonote::block& blk_head, block_tracker &bt, const boost::optional<crypto::hash>& blk_tail)
-{
-  std::vector<tools::wallet2*> wallet_vector = { wallet };
-  process_transactions(wallet_vector, events, blk_head, bt, blk_tail);
-}
-
-void wallet_tools::process_transactions(const std::vector<tools::wallet2*>& wallets, const std::vector<test_event_entry>& events, const cryptonote::block& blk_head, block_tracker &bt, const boost::optional<crypto::hash>& blk_tail)
 {
   map_hash2tx_t mtx;
   std::vector<const cryptonote::block*> blockchain;
@@ -52,15 +44,10 @@ void wallet_tools::process_transactions(const std::vector<tools::wallet2*>& wall
     trim_block_chain(blockchain, blk_tail.get());
   }
 
-  process_transactions(wallets, blockchain, mtx, bt);
+  process_transactions(wallet, blockchain, mtx, bt);
 }
 
-void wallet_tools::process_transactions(tools::wallet2 * wallet, const std::vector<const cryptonote::block*>& blockchain, const map_hash2tx_t & mtx, block_tracker &bt){
-  std::vector<tools::wallet2*> wallet_vector = { wallet };
-  process_transactions(wallet_vector, blockchain, mtx, bt);
-}
-
-void wallet_tools::process_transactions(const std::vector<tools::wallet2*>& wallets, const std::vector<const cryptonote::block*>& blockchain, const map_hash2tx_t & mtx, block_tracker &bt)
+void wallet_tools::process_transactions(tools::wallet2 * wallet, const std::vector<const cryptonote::block*>& blockchain, const map_hash2tx_t & mtx, block_tracker &bt)
 {
   uint64_t start_height=0, blocks_added=0;
   std::vector<cryptonote::block_complete_entry> v_bche;
@@ -80,12 +67,11 @@ void wallet_tools::process_transactions(const std::vector<tools::wallet2*>& wall
     wallet_tools::gen_block_data(bt, bl, mtx, v_bche.back(), v_parsed_block.back(), idx == 1 ? start_height : height);
   }
 
-  for(auto wallet: wallets) {
+  if (wallet)
     wallet_accessor_test::process_parsed_blocks(wallet, start_height, v_bche, v_parsed_block, blocks_added);
-  }
 }
 
-bool wallet_tools::fill_tx_sources(tools::wallet2 * wallet, std::vector<cryptonote::tx_source_entry>& sources, size_t mixin, const boost::optional<size_t>& num_utxo, const boost::optional<uint64_t>& min_amount, block_tracker &bt, std::vector<size_t> &selected, uint64_t cur_height, ssize_t offset, int step, const boost::optional<fnc_accept_tx_source_t>& fnc_accept, const boost::optional<fnc_accept_output_t>& fnc_in_accept)
+bool wallet_tools::fill_tx_sources(tools::wallet2 * wallet, std::vector<cryptonote::tx_source_entry>& sources, size_t mixin, const boost::optional<size_t>& num_utxo, const boost::optional<uint64_t>& min_amount, block_tracker &bt, std::vector<size_t> &selected, uint64_t cur_height, ssize_t offset, int step, const boost::optional<fnc_accept_tx_source_t>& fnc_accept)
 {
   CHECK_AND_ASSERT_THROW_MES(step != 0, "Step is zero");
   sources.clear();
@@ -98,7 +84,7 @@ bool wallet_tools::fill_tx_sources(tools::wallet2 * wallet, std::vector<cryptono
   size_t iters = 0;
   uint64_t sum = 0;
   size_t cur_utxo = 0;
-  bool should_abort_search = false;
+  bool abort = false;
   unsigned brk_cond = 0;
   unsigned brk_thresh = num_utxo && min_amount ? 2 : (num_utxo || min_amount ? 1 : 0);
 
@@ -110,7 +96,7 @@ bool wallet_tools::fill_tx_sources(tools::wallet2 * wallet, std::vector<cryptono
     brk_cond += 1;                                   \
   } while(0)
 
-  for(ssize_t i = roffset; iters < ntrans && !should_abort_search; i += step, ++iters)
+  for(ssize_t i = roffset; iters < ntrans && !abort; i += step, ++iters)
   {
     EVAL_BRK_COND();
     if (brk_cond >= brk_thresh)
@@ -120,7 +106,7 @@ bool wallet_tools::fill_tx_sources(tools::wallet2 * wallet, std::vector<cryptono
     auto & td = transfers[i];
     if (td.m_spent)
       continue;
-    if (td.m_tx.unlock_time < CRYPTONOTE_MAX_BLOCK_NUMBER && td.m_tx.unlock_time > cur_height + 1)
+    if (td.m_block_height + CRYPTONOTE_MINED_MONEY_UNLOCK_WINDOW > cur_height)
       continue;
     if (selected_idx.find((size_t)i) != selected_idx.end()){
       MERROR("Should not happen (selected_idx not found): " << i);
@@ -133,12 +119,18 @@ bool wallet_tools::fill_tx_sources(tools::wallet2 * wallet, std::vector<cryptono
 
     try {
       cryptonote::tx_source_entry src;
-      wallet_tools::gen_tx_src(mixin, cur_height, td, src, bt, fnc_in_accept);
+      wallet_tools::gen_tx_src(mixin, cur_height, td, src, bt);
 
       // Acceptor function
-      if (fnc_accept && !(fnc_accept.get())({.td=&td, .src=&src, .selected_idx=&selected_idx, .selected_kis=&selected_kis,
-                                              .ntrans=ntrans, .iters=iters, .sum=sum, .cur_utxo=cur_utxo}, should_abort_search))
+      if (fnc_accept){
+        tx_source_info_crate_t c_info{.td=&td, .src=&src, .selected_idx=&selected_idx, .selected_kis=&selected_kis,
+            .ntrans=ntrans, .iters=iters, .sum=sum, .cur_utxo=cur_utxo};
+
+        bool take_it = (fnc_accept.get())(c_info, abort);
+        if (!take_it){
           continue;
+        }
+      }
 
       MDEBUG("Selected " << i << " from tx: " << dump_keys(td.m_txid.data)
                         << " ki: " << dump_keys(td.m_key_image.data)
@@ -162,22 +154,18 @@ bool wallet_tools::fill_tx_sources(tools::wallet2 * wallet, std::vector<cryptono
   }
 
   EVAL_BRK_COND();
-  const auto res = brk_cond >= brk_thresh;
-  if (!res) {
-    MDEBUG("fill_tx_sources fails, brk_cond: " << brk_cond << ", brk_thresh: " << brk_thresh << ", utxos: " << cur_utxo << ", sum: " << sum);
-  }
-  return res;
+  return brk_cond >= brk_thresh;
 #undef EVAL_BRK_COND
 }
 
-void wallet_tools::gen_tx_src(size_t mixin, uint64_t cur_height, const tools::wallet2::transfer_details & td, cryptonote::tx_source_entry & src, block_tracker &bt, const boost::optional<fnc_accept_output_t>& fnc_accept)
+void wallet_tools::gen_tx_src(size_t mixin, uint64_t cur_height, const tools::wallet2::transfer_details & td, cryptonote::tx_source_entry & src, block_tracker &bt)
 {
   CHECK_AND_ASSERT_THROW_MES(mixin != 0, "mixin is zero");
   src.amount = td.amount();
   src.rct = td.is_rct();
 
   std::vector<tools::wallet2::get_outs_entry> outs;
-  bt.get_fake_outs(mixin, td.is_rct() ? 0 : td.amount(), td.m_global_output_index, cur_height, outs, fnc_accept);
+  bt.get_fake_outs(mixin, td.is_rct() ? 0 : td.amount(), td.m_global_output_index, cur_height, outs);
 
   for (size_t n = 0; n < mixin; ++n)
   {

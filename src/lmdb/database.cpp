@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are
@@ -179,10 +179,9 @@ namespace lmdb
     expect<void> database::commit(write_txn txn) noexcept
     {
         MONERO_PRECOND(txn != nullptr);
-        const int err = mdb_txn_commit(txn.release());
+        MONERO_LMDB_CHECK(mdb_txn_commit(txn.get()));
+        txn.release();
         release_context(ctx);
-        if (err)
-          return {lmdb::error(err)};
         return success();
     }
 } // lmdb

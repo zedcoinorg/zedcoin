@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2024, The Monero Project
+// Copyright (c) 2021-2022, The Zedcoin Project
 // 
 // All rights reserved.
 // 
@@ -40,19 +40,6 @@
 
 namespace multisig
 {
-  struct multisig_account_status
-  {
-    // is the multisig account active/initialized?
-    bool multisig_is_active{false};
-    // has the multisig account completed the main key exchange rounds?
-    bool kex_is_done{false};
-    // is the multisig account ready to use?
-    bool is_ready{false};
-    // multisig is: M-of-N
-    std::uint32_t threshold{0};  // M
-    std::uint32_t total{0};  // N
-  };
-
   /**
   * multisig account:
   * 
@@ -78,14 +65,14 @@ namespace multisig
   * 
   * Note on MULTISIG_MAX_SIGNERS: During key exchange, participants will have up to '(N - 1) choose (N - M)'
   *   key shares. If N is large, then the max number of key shares (when M = (N-1)/2) can be huge. A limit of N <= 16 was
-  *   arbitrarily chosen as a power of 2 that can accommodate the vast majority of practical use-cases. To increase the
+  *   arbitrarily chosen as a power of 2 that can accomodate the vast majority of practical use-cases. To increase the
   *   limit, FROST-style key aggregation should be used instead (it is more efficient than DH-based key generation
   *   when N - M > 1).
   * 
   * - Further reading
-  *   - MRL-0009: https://www.getmonero.org/resources/research-lab/pubs/MRL-0009.pdf
+  *   - MRL-0009: https://www.getzedcoin.org/resources/research-lab/pubs/MRL-0009.pdf
   *   - MuSig2: https://eprint.iacr.org/2020/1261
-  *   - ZtM2: https://web.getmonero.org/library/Zero-to-Monero-2-0-0.pdf Ch. 9, especially Section 9.6.3
+  *   - ZtM2: https://web.getzedcoin.org/library/Zero-to-Zedcoin-2-0-0.pdf Ch. 9, especially Section 9.6.3
   *   - FROST: https://eprint.iacr.org/2018/417
   */
   using multisig_keyset_map_memsafe_t = 
@@ -103,8 +90,7 @@ namespace multisig
     * 
     * - prepares a kex msg for the first round of multisig key construction.
     *    - the local account's kex msgs are signed with the base_privkey
-    *    - the first kex msg transmits the local base_common_privkey to other participants, for creating the group's
-    *      common_privkey
+    *    - the first kex msg transmits the local base_common_privkey to other participants, for creating the group's common_privkey
     */
     multisig_account(const crypto::secret_key &base_privkey,
       const crypto::secret_key &base_common_privkey);
@@ -156,7 +142,7 @@ namespace multisig
     const std::string& get_next_kex_round_msg() const { return m_next_round_kex_message; }
 
   //account status functions
-    // account has been initialized, and the account holder can use the 'common' key
+    // account has been intialized, and the account holder can use the 'common' key
     bool account_is_active() const;
     // account has gone through main kex rounds, only remaining step is to verify all other participants are ready
     bool main_kex_rounds_done() const;
@@ -191,48 +177,24 @@ namespace multisig
     *      - If force updating with maliciously-crafted messages, the resulting account will be invalid (either unable
     *        to complete signatures, or a 'hostage' to the malicious signer [i.e. can't sign without his participation]).
     */
-    void kex_update(const std::vector<multisig_kex_msg> &expanded_msgs, const bool force_update_use_with_caution = false);
-    /**
-    * brief: get_multisig_kex_round_booster - Create a multisig kex msg for the kex round that follows the kex round this
-    *    account is currently working on, in order to 'boost' another participant's kex setup.
-    *    - A booster message is for the round after the in-progress round because get_next_kex_round_msg() provides access
-    *      to the in-progress round's message.
-    *    - Useful for 'jumpstarting' the following kex round when you don't have messages from all other signers to complete
-    *      the current round.
-    *    - Sanitizes input messages and produces a new kex msg for round 'num_completed_rounds + 2'.
-    *
-    *    - For example, in 2-of-3 escrowed purchasing, the [vendor, arbitrator] pair can boost the second round
-    *      of key exchange by calling this function with the 'round 1' messages of each other.
-    *      Then the [buyer] can use the resulting boost messages, in combination with [vender, arbitrator] round 1 messages,
-    *      to complete the address in one step. In other words, call initialize_kex() on the round 1 messages,
-    *      then call kex_update() on the round 2 booster messages to finish the multisig key.
-    * 
-    *    - Note: The 'threshold' and 'num_signers' are inputs here in case kex has not been initialized yet.
-    * param: threshold - threshold for multisig (M in M-of-N)
-    * param: num_signers - number of participants in multisig (N)
-    * param: expanded_msgs - set of multisig kex messages to process
-    * return: multisig kex message for next round
-    */
-    multisig_kex_msg get_multisig_kex_round_booster(const std::uint32_t threshold,
-      const std::uint32_t num_signers,
-      const std::vector<multisig_kex_msg> &expanded_msgs) const;
+    void kex_update(const std::vector<multisig_kex_msg> &expanded_msgs,
+      const bool force_update_use_with_caution = false);
 
   private:
     // implementation of kex_update() (non-transactional)
     void kex_update_impl(const std::vector<multisig_kex_msg> &expanded_msgs, const bool incomplete_signer_set);
     /**
-    * brief: get_kex_exclude_pubkeys - collect the local signer's shared keys to ignore in incoming messages
-    * return: keys held by the local account corresponding to the 'in-progress round'
-    *    - If 'in-progress round' is the final round, these are the local account's shares of the final aggregate key.
-    */
-    std::vector<crypto::public_key> get_kex_exclude_pubkeys() const;
-    /**
-    * brief: initialize_kex_update - initialize the multisig account for the first kex round
+    * brief: initialize_kex_update - Helper for kex_update_impl()
+    *    - Collect the local signer's shared keys to ignore in incoming messages, build the aggregate ancillary key
+    *      if appropriate.
     * param: expanded_msgs - set of multisig kex messages to process
     * param: kex_rounds_required - number of rounds required for kex (not including post-kex verification round)
+    * outparam: exclude_pubkeys_out - keys held by the local account corresponding to round 'current_round'
+    *    - If 'current_round' is the final round, these are the local account's shares of the final aggregate key.
     */
     void initialize_kex_update(const std::vector<multisig_kex_msg> &expanded_msgs,
-      const std::uint32_t kex_rounds_required);
+      const std::uint32_t kex_rounds_required,
+      std::vector<crypto::public_key> &exclude_pubkeys_out);
     /**
     * brief: finalize_kex_update - Helper for kex_update_impl()
     * param: kex_rounds_required - number of rounds required for kex (not including post-kex verification round)

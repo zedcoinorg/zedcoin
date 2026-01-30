@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 // 
 // All rights reserved.
 // 
@@ -580,7 +580,7 @@ bool gen_block_invalid_binary_format::generate(std::vector<test_event_entry>& ev
   while (diffic < 1500);
 
   blk_last = boost::get<block>(events.back());
-  MAKE_TX(events, tx_0, miner_account, miner_account, MK_COINS(30), blk_last);
+  MAKE_TX(events, tx_0, miner_account, miner_account, MK_COINS(30), boost::get<block>(events[1]));
   DO_CALLBACK(events, "corrupt_blocks_boundary");
 
   block blk_test;

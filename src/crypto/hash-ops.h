@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 // 
 // All rights reserved.
 // 
@@ -30,12 +30,7 @@
 
 #pragma once
 
-#if defined(__cplusplus)
-
-#include <cstddef>
-#include <cstdint>
-
-#else
+#if !defined(__cplusplus)
 
 #include <assert.h>
 #include <stdbool.h>

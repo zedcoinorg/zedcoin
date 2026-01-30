@@ -1,4 +1,4 @@
-// Copyright (c) 2018-2024, The Monero Project
+// Copyright (c) 2018-2022, The Zedcoin Project
 
 // All rights reserved.
 //
@@ -31,7 +31,6 @@
 #include <cstring>
 #include <lmdb.h>
 #include <type_traits>
-#include <cassert>
 #include <utility>
 
 #include "span.h"
@@ -137,7 +136,7 @@ namespace lmdb
     template<typename T, std::size_t offset = 0>
     inline int compare(MDB_val const* left, MDB_val const* right) noexcept
     {
-        static_assert(std::is_standard_layout_v<T> && alignof(T) == 1, "memcmp will not work");
+        static_assert(std::is_standard_layout<T>() && alignof(T) == 1, "memcmp will not work");
         if (!left || !right || left->mv_size < sizeof(T) + offset || right->mv_size < sizeof(T) + offset)
         {
             assert("invalid use of custom comparison" == 0);

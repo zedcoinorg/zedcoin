@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2024, The Monero Project
+# Copyright (c) 2014-2022, The Zedcoin Project
 #
 # All rights reserved.
 #
@@ -40,7 +40,7 @@ set(trezor_tests_headers
         ../core_tests/chaingen.h
         ../core_tests/wallet_tools.h)
 
-monero_add_minimal_executable(trezor_tests
+zedcoin_add_minimal_executable(trezor_tests
   ${trezor_tests_sources}
   ${trezor_tests_headers})
 
@@ -62,7 +62,7 @@ target_link_libraries(trezor_tests
     ${Boost_FILESYSTEM_LIBRARY}
     ${Boost_PROGRAM_OPTIONS_LIBRARY}
     ${Boost_SYSTEM_LIBRARY}
-    PkgConfig::libzmq
+    ${ZMQ_LIB}
     ${CMAKE_THREAD_LIBS_INIT}
     ${EXTRA_LIBRARIES})
 

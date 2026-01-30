@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 //
 // All rights reserved.
 //
@@ -48,6 +48,7 @@
 #include "cryptonote_protocol/levin_notify.h"
 #include "warnings.h"
 #include "net/abstract_tcp_server2.h"
+#include "net/levin_protocol_handler.h"
 #include "net/levin_protocol_handler_async.h"
 #include "p2p_protocol_defs.h"
 #include "storages/levin_abstract_invoke2.h"
@@ -257,7 +258,7 @@ namespace nodetool
         m_offline(false),
         is_closing(false),
         m_network_id(),
-        m_enable_dns_seed_nodes(true),
+        m_enable_dns_seed_nodes(false),
         max_connections(1)
     {}
     virtual ~node_server();
@@ -301,12 +302,7 @@ namespace nodetool
     virtual void clear_used_stripe_peers();
 
   private:
-    const std::vector<std::string> m_seed_nodes_list =
-    { "seeds.moneroseeds.se"
-    , "seeds.moneroseeds.ae.org"
-    , "seeds.moneroseeds.ch"
-    , "seeds.moneroseeds.li"
-    };
+    const std::vector<std::string> m_seed_nodes_list = {};
 
     bool islimitup=false;
     bool islimitdown=false;
@@ -560,4 +556,3 @@ namespace nodetool
 }
 
 POP_WARNINGS
-

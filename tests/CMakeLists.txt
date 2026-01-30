@@ -1,4 +1,4 @@
-# Copyright (c) 2014-2024, The Monero Project
+# Copyright (c) 2014-2022, The Zedcoin Project
 # 
 # All rights reserved.
 # 
@@ -32,7 +32,7 @@ set(MONERO_WALLET_CRYPTO_BENCH "auto" CACHE STRING "Select wallet crypto librari
 
 # The docs say this only affects grouping in IDEs
 set(folder "tests")
-set(TEST_DATA_DIR "${CMAKE_CURRENT_BINARY_DIR}/data")
+set(TEST_DATA_DIR "${CMAKE_CURRENT_LIST_DIR}/data")
 
 if (WIN32 AND STATIC)
   add_definitions(-DSTATICLIB)
@@ -40,11 +40,37 @@ if (WIN32 AND STATIC)
   add_definitions(-DMINIUPNP_STATICLIB)
 endif ()
 
-set(BUILD_GMOCK OFF CACHE BOOL "Don't build GMock" FORCE)
-set(INSTALL_GTEST OFF CACHE BOOL "Don't install GTest" FORCE)
-add_subdirectory("${CMAKE_SOURCE_DIR}/external/gtest" ${CMAKE_BINARY_DIR}/googletest)
-include_directories(SYSTEM "${CMAKE_SOURCE_DIR}/external/gtest/googletest/include")
-set(GTEST_LIBRARIES gtest gtest_main)
+find_package(GTest)
+
+if (GTest_FOUND)
+  include_directories(SYSTEM ${GTEST_INCLUDE_DIRS})
+else ()
+  message(STATUS "GTest not found on the system: will use GTest bundled with this source")
+
+  include(ExternalProject)
+  ExternalProject_Add(googletest
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/gtest
+    BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/gtest
+    DOWNLOAD_COMMAND ""
+    UPDATE_COMMAND ""
+    INSTALL_COMMAND ""
+  )
+  add_library(gtest      UNKNOWN IMPORTED)
+  add_library(gtest_main UNKNOWN IMPORTED)
+  set_target_properties(gtest PROPERTIES
+    IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/gtest/${CMAKE_STATIC_LIBRARY_PREFIX}gtest${CMAKE_STATIC_LIBRARY_SUFFIX}"
+  )
+  set_target_properties(gtest_main PROPERTIES
+    IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/gtest/${CMAKE_STATIC_LIBRARY_PREFIX}gtest_main${CMAKE_STATIC_LIBRARY_SUFFIX}"
+  )
+  add_dependencies(gtest      googletest)
+  add_dependencies(gtest_main googletest)
+
+  # Emulate the FindGTest module's variable.
+  set(GTEST_LIBRARIES gtest gtest_main)
+  set(GTEST_BOTH_LIBRARIES gtest gtest_main)
+  include_directories(SYSTEM "${CMAKE_CURRENT_SOURCE_DIR}/gtest/include")
+endif (GTest_FOUND)
 
 message(STATUS "Copying test data directory...")
 file(COPY data DESTINATION .) # Copy data directory from source root to build root
@@ -53,9 +79,7 @@ if (CMAKE_BUILD_TYPE STREQUAL "fuzz" OR OSSFUZZ)
   add_subdirectory(fuzz)
 else ()
   add_subdirectory(core_tests)
-  if (ENABLE_FUZZ_TEST)
-    add_subdirectory(fuzz)
-  endif()
+  add_subdirectory(fuzz)
   add_subdirectory(crypto)
   add_subdirectory(functional_tests)
   add_subdirectory(performance_tests)
@@ -74,12 +98,14 @@ if (TREZOR_DEBUG)
   add_subdirectory(trezor)
 endif()
 
+# add_subdirectory(daemon_tests)
+
 set(hash_targets_sources
   hash-target.cpp)
 
 set(hash_targets_headers)
 
-monero_add_minimal_executable(hash-target-tests
+zedcoin_add_minimal_executable(hash-target-tests
   ${hash_targets_sources}
   ${hash_targets_headers})
 target_link_libraries(hash-target-tests
@@ -109,7 +135,7 @@ list(REMOVE_DUPLICATES MONERO_WALLET_CRYPTO_BENCH)
 list(REMOVE_ITEM MONERO_WALLET_CRYPTO_BENCH "cn") # always used for comparison
 set(MONERO_WALLET_CRYPTO_BENCH_NAMES "(cn)")
 foreach(BENCH IN LISTS MONERO_WALLET_CRYPTO_BENCH)
-  monero_crypto_valid(${BENCH} VALID)
+  zedcoin_crypto_valid(${BENCH} VALID)
   if (NOT VALID)
     message(FATAL_ERROR "Invalid MONERO_WALLET_CRYPTO_BENCH option ${BENCH}")
   endif ()
@@ -117,15 +143,15 @@ foreach(BENCH IN LISTS MONERO_WALLET_CRYPTO_BENCH)
   monero_crypto_get_target(${BENCH} BENCH_LIBRARY)
   list(APPEND BENCH_OBJECTS $<TARGET_OBJECTS:${BENCH_LIBRARY}>)
 
-  monero_crypto_get_namespace(${BENCH} BENCH_NAMESPACE)
+  zedcoin_crypto_get_namespace(${BENCH} BENCH_NAMESPACE)
   set(MONERO_WALLET_CRYPTO_BENCH_NAMES "${MONERO_WALLET_CRYPTO_BENCH_NAMES}(${BENCH_NAMESPACE})")
 endforeach ()
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/benchmark.h.in" "${MONERO_GENERATED_HEADERS_DIR}/tests/benchmark.h")
-monero_add_minimal_executable(monero-wallet-crypto-bench benchmark.cpp ${BENCH_OBJECTS})
-target_link_libraries(monero-wallet-crypto-bench cncrypto)
+zedcoin_add_minimal_executable(zedcoin-wallet-crypto-bench benchmark.cpp ${BENCH_OBJECTS})
+target_link_libraries(zedcoin-wallet-crypto-bench cncrypto)
 
-add_test(NAME wallet-crypto-bench COMMAND monero-wallet-crypto-bench)
+add_test(NAME wallet-crypto-bench COMMAND zedcoin-wallet-crypto-bench)
 
 
 set(enabled_tests

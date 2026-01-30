@@ -1,4 +1,4 @@
-// Copyright (c) 2016-2024, The Monero Project
+// Copyright (c) 2016-2022, The Zedcoin Project
 // 
 // All rights reserved.
 // 
@@ -90,12 +90,7 @@ namespace tools
 
 el::Level performance_timer_log_level = el::Level::Info;
 
-#ifdef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
-  #warning "Building with fuzzing mode UNSAFE FOR PRODUCTION!"
-  __thread std::vector<LoggingPerformanceTimer*> *performance_timers = NULL;
-#else
-  static __thread std::vector<LoggingPerformanceTimer*> *performance_timers = NULL;
-#endif
+static __thread std::vector<LoggingPerformanceTimer*> *performance_timers = NULL;
 
 void set_performance_timer_log_level(el::Level level)
 {

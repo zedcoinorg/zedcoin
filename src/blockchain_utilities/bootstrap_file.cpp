@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 //
 // All rights reserved.
 //
@@ -28,6 +28,7 @@
 
 #include "bootstrap_serialization.h"
 #include "serialization/binary_utils.h" // dump_binary(), parse_binary()
+#include "serialization/json_utils.h" // dump_json()
 
 #include "bootstrap_file.h"
 
@@ -42,7 +43,7 @@ using namespace epee;
 namespace
 {
   // This number was picked by taking the leading 4 bytes from this output:
-  // echo Monero bootstrap file | sha1sum
+  // echo Zedcoin bootstrap file | sha1sum
   const uint32_t blockchain_raw_magic = 0x28721586;
   const uint32_t header_size = 1024;
 

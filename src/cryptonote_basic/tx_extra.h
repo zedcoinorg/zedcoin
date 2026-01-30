@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2024, The Monero Project
+// Copyright (c) 2014-2022, The Zedcoin Project
 // 
 // All rights reserved.
 // 
@@ -30,15 +30,6 @@
 
 #pragma once
 
-#include <cstdint>
-#include <cstddef>
-
-#include <boost/variant/variant.hpp>
-
-#include "serialization/serialization.h"
-#include "serialization/binary_archive.h"
-#include "serialization/variant.h"
-#include "crypto/crypto.h"
 
 #define TX_EXTRA_PADDING_MAX_COUNT          255
 #define TX_EXTRA_NONCE_MAX_COUNT            255
@@ -133,7 +124,7 @@ namespace cryptonote
       END_SERIALIZE()
     };
 
-    uint64_t depth;
+    size_t depth;
     crypto::hash merkle_root;
 
     // load

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright (c) 2019-2024, The Monero Project
+# Copyright (c) 2019-2022, The Monero Project
 # 
 # All rights reserved.
 # 
@@ -28,6 +28,7 @@
 # STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 # THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from __future__ import print_function
 import json
 import util_resources
 import pprint
@@ -83,7 +84,6 @@ class TransferTest():
         self.check_tx_notes()
         self.check_rescan()
         self.check_is_key_image_spent()
-        self.check_multiple_submissions()
         self.check_scan_tx()
         self.check_subtract_fee_from_outputs()
         self.check_background_sync()
@@ -862,40 +862,6 @@ class TransferTest():
         res = daemon.is_key_image_spent(ki)
         assert res.spent_status == expected
 
-    def check_multiple_submissions(self):
-        daemon = Daemon()
-
-        print('Testing multiple submissions')
-
-        dst = {'address': '42ey1afDFnn4886T7196doS9GPMzexD9gXpsZJDwVjeRVdFCSoHnv7KPbBeGpzJBzHRCAs9UxqeoyFQMYbqSWYTfJJQAWDm', 'amount': 1000000000000}
-
-        self.wallet[0].refresh()
-        res = self.wallet[0].get_balance()
-        balance = res.balance
-
-        res = self.wallet[0].transfer([dst], ring_size = 16, get_tx_key = False, get_tx_hex = False, get_tx_metadata = True)
-        tx_hex = res.tx_metadata
-        tx_fee = res.fee
-        res = self.wallet[0].relay_tx(tx_hex)
-
-        # submit again before mined
-        res = self.wallet[0].relay_tx(tx_hex)
-        daemon.generateblocks('44Kbx4sJ7JDRDV5aAhLJzQCjDz2ViLRduE3ijDZu3osWKBjMGkV1XPk4pfDUMqt1Aiezvephdqm6YD19GKFD9ZcXVUTp6BW', 1)
-
-        self.wallet[0].refresh()
-        res = self.wallet[0].get_balance()
-        assert res.balance == balance - tx_fee
-
-        balance = res.balance
-
-        # submit again after mined
-        res = self.wallet[0].relay_tx(tx_hex)
-        daemon.generateblocks('44Kbx4sJ7JDRDV5aAhLJzQCjDz2ViLRduE3ijDZu3osWKBjMGkV1XPk4pfDUMqt1Aiezvephdqm6YD19GKFD9ZcXVUTp6BW', 1)
-
-        self.wallet[0].refresh()
-        res = self.wallet[0].get_balance()
-        assert res.balance == balance
-
     def check_scan_tx(self):
         daemon = Daemon()
 
@@ -903,7 +869,10 @@ class TransferTest():
 
         # set up sender_wallet
         sender_wallet = self.wallet[0]
-        restore_wallet(sender_wallet, seeds[0])
+        try: sender_wallet.close_wallet()
+        except: pass
+        sender_wallet.restore_deterministic_wallet(seed = seeds[0])
+        sender_wallet.auto_refresh(enable = False)
         sender_wallet.refresh()
         res = sender_wallet.get_transfers()
         out_len = 0 if 'out' not in res else len(res.out)
@@ -913,7 +882,10 @@ class TransferTest():
 
         # set up receiver_wallet
         receiver_wallet = self.wallet[1]
-        restore_wallet(receiver_wallet, seeds[1])
+        try: receiver_wallet.close_wallet()
+        except: pass
+        receiver_wallet.restore_deterministic_wallet(seed = seeds[1])
+        receiver_wallet.auto_refresh(enable = False)
         receiver_wallet.refresh()
         res = receiver_wallet.get_transfers()
         in_len = 0 if 'in' not in res else len(res['in'])
@@ -978,7 +950,6 @@ class TransferTest():
 
         print('Checking scan_tx on outgoing tx before refresh')
         sender_wallet.scan_tx([txid])
-        sender_wallet.refresh()
         res = sender_wallet.get_transfers()
         assert 'pending' not in res or len(res.pending) == 0
         assert 'pool' not in res or len (res.pool) == 0
@@ -1019,7 +990,9 @@ class TransferTest():
         all_txs = out_txids + in_txids
         for test_type in ["all txs", "incoming first", "duplicates within", "duplicates across"]:
             print(test + ' (' + test_type + ')')
-            restore_wallet(sender_wallet, seeds[0], height)
+            sender_wallet.close_wallet()
+            sender_wallet.restore_deterministic_wallet(seed = seeds[0], restore_height = height)
+            assert sender_wallet.get_transfers() == {}
             if test_type == "all txs":
                 sender_wallet.scan_tx(all_txs)
             elif test_type == "incoming first":
@@ -1033,19 +1006,18 @@ class TransferTest():
                 sender_wallet.scan_tx(all_txs)
             else:
                 assert True == False
-            assert sender_wallet.get_balance().balance == expected_sender_balance
-            sender_wallet.refresh()
             diff_transfers(sender_wallet.get_transfers(), res)
+            assert sender_wallet.get_balance().balance == expected_sender_balance
 
         print('Sanity check against outgoing wallet restored at height 0')
-        restore_wallet(sender_wallet, seeds[0], 0)
+        sender_wallet.close_wallet()
+        sender_wallet.restore_deterministic_wallet(seed = seeds[0], restore_height = 0)
         sender_wallet.refresh()
         diff_transfers(sender_wallet.get_transfers(), res)
         assert sender_wallet.get_balance().balance == expected_sender_balance
 
         print('Checking scan_tx on incoming txs before refresh')
         receiver_wallet.scan_tx([txid, miner_txid])
-        receiver_wallet.refresh()
         res = receiver_wallet.get_transfers()
         assert 'pending' not in res or len(res.pending) == 0
         assert 'pool' not in res or len (res.pool) == 0
@@ -1078,18 +1050,20 @@ class TransferTest():
         txids = [x.txid for x in res['in']]
         if 'out' in res:
             txids = txids + [x.txid for x in res.out]
-        restore_wallet(receiver_wallet, seeds[1], height)
+        receiver_wallet.close_wallet()
+        receiver_wallet.restore_deterministic_wallet(seed = seeds[1], restore_height = height)
+        assert receiver_wallet.get_transfers() == {}
         receiver_wallet.scan_tx(txids)
         if 'out' in res:
             for i, out_tx in enumerate(res.out):
                 if 'destinations' in out_tx:
                     del res.out[i]['destinations'] # destinations are not expected after wallet restore
-        assert receiver_wallet.get_balance().balance == expected_receiver_balance
-        receiver_wallet.refresh()
         diff_transfers(receiver_wallet.get_transfers(), res)
+        assert receiver_wallet.get_balance().balance == expected_receiver_balance
 
         print('Sanity check against incoming wallet restored at height 0')
-        restore_wallet(receiver_wallet, seeds[1], 0)
+        receiver_wallet.close_wallet()
+        receiver_wallet.restore_deterministic_wallet(seed = seeds[1], restore_height = 0)
         receiver_wallet.refresh()
         diff_transfers(receiver_wallet.get_transfers(), res)
         assert receiver_wallet.get_balance().balance == expected_receiver_balance
@@ -1489,7 +1463,10 @@ class TransferTest():
 
         for background_sync_type in [reuse_password, custom_password]:
             # Set up wallet saved to disk
-            restore_wallet(sender_wallet, seeds[0], filename = 'test1', password = '')
+            sender_wallet.close_wallet()
+            util_resources.remove_wallet_files('test1')
+            sender_wallet.restore_deterministic_wallet(seed = seeds[0], filename = 'test1', password = '')
+            sender_wallet.auto_refresh(enable = False)
             sender_wallet.refresh()
             sender_starting_balance = sender_wallet.get_balance().balance
 

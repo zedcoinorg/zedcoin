@@ -1,0 +1,85 @@
+name: Replace Source From Archive
+
+on:
+  workflow_dispatch:
+    inputs:
+      archive_url:
+        description: "Public URL to a .tar.gz or .zip with the new source"
+        required: true
+      archive_sha256:
+        description: "Optional SHA256 to verify the archive"
+        required: false
+      target_branch:
+        description: "Branch to replace"
+        required: false
+        default: "main"
+
+jobs:
+  replace:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_branch }}
+          fetch-depth: 0
+
+      - name: Prepare
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/src-archive /tmp/src-extract
+
+      - name: Download archive
+        run: |
+          set -euo pipefail
+          curl -L "${{ inputs.archive_url }}" -o /tmp/src-archive/source
+          if [ -n "${{ inputs.archive_sha256 }}" ]; then
+            echo "${{ inputs.archive_sha256 }}  /tmp/src-archive/source" | sha256sum -c -
+          fi
+
+      - name: Extract archive
+        run: |
+          set -euo pipefail
+          file /tmp/src-archive/source
+          if tar -tzf /tmp/src-archive/source >/dev/null 2>&1; then
+            tar -xzf /tmp/src-archive/source -C /tmp/src-extract
+          else
+            unzip -q /tmp/src-archive/source -d /tmp/src-extract
+          fi
+
+          # If archive has a single top-level folder, use it.
+          top="$(find /tmp/src-extract -mindepth 1 -maxdepth 1 -type d | head -n1)"
+          if [ -z "$top" ]; then
+            echo "Archive extract failed or empty." >&2
+            exit 1
+          fi
+          echo "SRC_DIR=$top" >> "$GITHUB_ENV"
+
+      - name: Replace repo contents
+        run: |
+          set -euo pipefail
+
+          # Keep the workflow itself so Actions can run again.
+          tmp_workflow="/tmp/replace-source.yml"
+          cp .github/workflows/replace-source.yml "$tmp_workflow"
+
+          rsync -a --delete \
+            --exclude ".git" \
+            --exclude ".github/workflows/replace-source.yml" \
+            "$SRC_DIR"/ ./
+
+          # Remove build-daemon-ubuntu.sh even if it exists in the archive.
+          rm -f build-daemon-ubuntu.sh
+
+          # Restore workflow file.
+          mkdir -p .github/workflows
+          mv "$tmp_workflow" .github/workflows/replace-source.yml
+
+      - name: Commit & push
+        run: |
+          set -euo pipefail
+          git config user.name "actions-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          git commit -m "Replace source from archive" || exit 0
+          git push origin "HEAD:${{ inputs.target_branch }}"

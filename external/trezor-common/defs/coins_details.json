@@ -27001,7 +27001,7 @@
         "misc:XMR": {
             "links": {
                 "Github": "https://github.com/monero-project/monero",
-                "Homepage": "https://zedcoin.org"
+                "Homepage": "https://getmonero.org"
             },
             "marketcap_usd": 1254051585,
             "name": "Monero",
@@ -27012,7 +27012,7 @@
             "wallet": [
                 {
                     "name": "Monero CLI/GUI",
-                    "url": "https://www.zedcoin.org/downloads/"
+                    "url": "https://www.getmonero.org/downloads/"
                 }
             ]
         },

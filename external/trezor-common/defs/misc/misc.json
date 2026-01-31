@@ -37,11 +37,11 @@
         "curve": "ed25519",
         "decimals": 12,
         "links": {
-            "Homepage": "https://getmonero.org",
+            "Homepage": "https://zedcoin.org",
             "Github": "https://github.com/monero-project/monero"
         },
         "wallet": {
-            "Monero CLI/GUI": "https://www.getmonero.org/downloads/"
+            "Monero CLI/GUI": "https://www.zedcoin.org/downloads/"
         },
         "blockchain_link": null
     },

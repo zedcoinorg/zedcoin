@@ -1634,8 +1634,8 @@ Amount, Spent(&quot;T&quot;|&quot;F&quot;), &quot;frozen&quot;|&quot;locked&quot
     </message>
     <message>
         <location filename="../src/simplewallet/simplewallet.cpp" line="3134"/>
-        <source>Donate &lt;amount&gt; to the development team (donate.getmonero.org).</source>
-        <translation>Spende &lt;Betrag&gt; ans Entwicklerteam (donate.getmonero.org).</translation>
+        <source>Donate &lt;amount&gt; to the development team (donate.zedcoin.org).</source>
+        <translation>Spende &lt;Betrag&gt; ans Entwicklerteam (donate.zedcoin.org).</translation>
     </message>
     <message>
         <location filename="../src/simplewallet/simplewallet.cpp" line="3138"/>
@@ -4525,7 +4525,7 @@ This transaction (including %s change) will unlock on block %llu, in approximate
     </message>
     <message>
         <location filename="../src/simplewallet/simplewallet.cpp" line="7388"/>
-        <source>Donating %s %s to The Monero Project (donate.getmonero.org or %s).</source>
+        <source>Donating %s %s to The Monero Project (donate.zedcoin.org or %s).</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
